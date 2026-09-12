@@ -1,0 +1,92 @@
+# Distributed Key-Value Store with Raft Consensus
+
+A distributed, in-memory key-value store built from scratch in C++, implementing the **Raft consensus algorithm** for leader election and log replication. Inspired by systems like etcd and Consul, this project demonstrates core distributed systems concepts — consensus, replication, failure detection, and automatic recovery — through a working, testable implementation.
+
+## Features
+
+- **Leader election** via Raft — term-based voting with randomized election timeouts to minimize split votes
+- **Log-based replication** — writes are appended to a replicated log and only applied once confirmed by a majority of nodes
+- **Automatic failover** — if the leader crashes, the remaining nodes detect the failure and elect a new leader without manual intervention
+- **Automatic log catch-up** — a node that falls behind (e.g., after a restart) automatically receives and replays missing log entries
+- **gRPC-based communication** — all inter-node and client-server communication uses Protocol Buffers over gRPC
+- **Chaos testing** — includes a script that randomly kills and restarts cluster nodes to verify resilience
+
+## Architecture
+
+Each node in the cluster runs identical code and can be in one of three Raft states:
+
+- **Follower** — the default state; listens for heartbeats/log entries from a leader
+- **Candidate** — a node that hasn't heard from a leader within its election timeout, and is requesting votes to become leader
+- **Leader** — the node currently handling client writes and replicating them to followers
+
+Nodes communicate over gRPC using the following core RPCs (defined in `proto/kvstore.proto`):
+
+| RPC | Purpose |
+|---|---|
+| `Get` / `Set` / `Delete` | Client-facing key-value operations |
+| `RequestVote` | Used by candidates during leader election |
+| `AppendEntries` | Used by the leader to replicate log entries and send heartbeats |
+| `Heartbeat` | Lightweight liveness signal from leader to followers |
+
+Writes flow through a **replicated log**: an entry is first appended locally, then sent to all peers. Only once a **majority** of nodes have acknowledged the entry is it marked as *committed* and applied to the in-memory key-value store — this is what guarantees consistency across the cluster even in the presence of node failures.
+
+## Tech Stack
+
+- **C++17**
+- **gRPC** + **Protocol Buffers** for RPC and serialization
+- **CMake** as the build system
+- **vcpkg** for dependency management
+
+## Getting Started
+
+See [SETUP.md](./SETUP.md) for full, step-by-step instructions on setting up the toolchain, building the project, and running a multi-node cluster.
+
+### Quick overview
+
+```bash
+# Build
+cd build
+cmake --build .
+
+# Run a 3-node cluster (in three separate terminals)
+.\build\Debug\server.exe 50051 50052 50053
+.\build\Debug\server.exe 50052 50051 50053
+.\build\Debug\server.exe 50053 50051 50052
+
+# Run the client against any node
+.\build\Debug\client.exe
+```
+
+### Chaos testing
+
+```powershell
+.\chaos_test.ps1
+```
+
+This starts a 3-node cluster and repeatedly kills/restarts a random node to verify the cluster recovers automatically.
+
+## Project Structure
+
+```
+hello-grpc/
+├── proto/
+│   └── kvstore.proto        # Service and message definitions
+├── server.cpp                # Raft node implementation (election + replication + KV store)
+├── client.cpp                 # Simple gRPC client
+├── chaos_test.ps1            # Automated resilience testing script
+├── CMakeLists.txt
+└── SETUP.md
+```
+
+## Known Limitations
+
+This is a learning-focused implementation and intentionally omits some production concerns:
+
+- **No persistence** — all data and log entries are stored in memory and lost on restart
+- **No log compaction / snapshotting** — the log grows unbounded
+- **No TLS / authentication** — communication is unencrypted (`InsecureChannelCredentials`)
+- **Fixed cluster membership** — nodes must be started with a known, static peer list
+
+## License
+
+MIT
