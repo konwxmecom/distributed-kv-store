@@ -1,9 +1,4 @@
-const seedData = [
-  { key: "feature.dark_mode", value: "enabled", updated: "2 min ago" },
-  { key: "service.timeout_ms", value: "2500", updated: "18 min ago" },
-  { key: "region.primary", value: "ap-south-1", updated: "41 min ago" },
-  { key: "release.version", value: "2.4.1", updated: "1 hr ago" }
-];
+const API_BASE = "http://127.0.0.1:8080/api";
 
 const nodes = [
   { name: "node-50051", address: "localhost:50051", role: "Leader", icon: "L" },
@@ -11,12 +6,9 @@ const nodes = [
   { name: "node-50053", address: "localhost:50053", role: "Follower", icon: "F" }
 ];
 
-let entries = [...seedData];
+let entries = [];
 let activities = [
-  { icon: "✓", text: "Committed <strong>release.version</strong>", meta: "node-50051 · 1 hour ago" },
-  { icon: "↗", text: "Replicated entry to quorum", meta: "term 18 · 1 hour ago" },
-  { icon: "●", text: "Heartbeat acknowledged", meta: "all followers · 2 hours ago" },
-  { icon: "⌁", text: "Snapshot completed", meta: "248 entries compacted · 3 hours ago" }
+  { icon: "●", text: "Waiting for gateway activity", meta: "start gateway to connect · now" }
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -51,15 +43,19 @@ function escapeHtml(value) {
 }
 
 function addActivity(key, action) {
-  activities.unshift({ icon: action === "deleted" ? "−" : "✓", text: `${action === "deleted" ? "Deleted" : "Committed"} <strong>${escapeHtml(key)}</strong>`, meta: "local demo · just now" });
+  activities.unshift({ icon: action === "deleted" ? "−" : "✓", text: `${action === "deleted" ? "Deleted" : "Committed"} <strong>${escapeHtml(key)}</strong>`, meta: "Raft gateway · just now" });
   renderActivity();
 }
 
-function saveEntry(key, value, previousKey = null) {
+async function saveEntry(key, value, previousKey = null) {
+  const response = await fetch(`${API_BASE}/entry`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value }) });
+  if (!response.ok) throw new Error((await response.json()).error || "write failed");
   const index = entries.findIndex((entry) => entry.key === (previousKey || key));
   const entry = { key, value, updated: "just now" };
   if (index >= 0) entries[index] = entry;
   else entries.unshift(entry);
+  rememberKey(key);
+  if (previousKey && previousKey !== key) forgetKey(previousKey);
   addActivity(key, "committed");
   renderEntries();
 }
@@ -75,10 +71,9 @@ function openEditor(key = "") {
 
 $("#searchInput").addEventListener("input", renderEntries);
 $("#newEntryButton").addEventListener("click", () => openEditor());
-$("#refreshButton").addEventListener("click", (event) => {
+$("#refreshButton").addEventListener("click", async (event) => {
   event.currentTarget.animate([{ transform: "rotate(0)" }, { transform: "rotate(360deg)" }], { duration: 450 });
-  $("#formNote").textContent = "Dashboard refreshed just now.";
-  setTimeout(() => { $("#formNote").textContent = "Writes are simulated locally in this console."; }, 2200);
+  await loadFromGateway();
 });
 
 $("#dataRows").addEventListener("click", (event) => {
@@ -86,32 +81,80 @@ $("#dataRows").addEventListener("click", (event) => {
   const deleteKey = event.target.dataset.delete;
   if (editKey) openEditor(editKey);
   if (deleteKey) {
-    entries = entries.filter((entry) => entry.key !== deleteKey);
-    addActivity(deleteKey, "deleted");
-    renderEntries();
+    fetch(`${API_BASE}/entry?key=${encodeURIComponent(deleteKey)}`, { method: "DELETE" }).then(async (response) => {
+      if (!response.ok) throw new Error((await response.json()).error || "delete failed");
+      entries = entries.filter((entry) => entry.key !== deleteKey);
+      forgetKey(deleteKey);
+      addActivity(deleteKey, "deleted");
+      renderEntries();
+    }).catch(showGatewayError);
   }
 });
 
-$("#editForm").addEventListener("submit", (event) => {
+$("#editForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const key = $("#dialogKey").value.trim();
   const value = $("#dialogValue").value.trim();
   if (!key || !value) return;
-  saveEntry(key, value, $("#editDialog").dataset.previousKey);
-  $("#editDialog").close();
+  try {
+    await saveEntry(key, value, $("#editDialog").dataset.previousKey);
+    $("#editDialog").close();
+  } catch (error) { showGatewayError(error); }
 });
 
-$("#entryForm").addEventListener("submit", (event) => {
+$("#entryForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const key = $("#keyInput").value.trim();
   const value = $("#valueInput").value.trim();
   if (!key || !value) return;
-  saveEntry(key, value);
-  event.currentTarget.reset();
-  $("#formNote").textContent = `Entry appended for ${key}.`;
-  setTimeout(() => { $("#formNote").textContent = "Writes are simulated locally in this console."; }, 2600);
+  try {
+    await saveEntry(key, value);
+    event.currentTarget.reset();
+    $("#formNote").textContent = `Entry committed for ${key}.`;
+  } catch (error) { showGatewayError(error); }
 });
+
+function rememberKey(key) {
+  const keys = new Set(JSON.parse(localStorage.getItem("raft-kv-keys") || "[]"));
+  keys.add(key);
+  localStorage.setItem("raft-kv-keys", JSON.stringify([...keys]));
+}
+
+function forgetKey(key) {
+  const keys = new Set(JSON.parse(localStorage.getItem("raft-kv-keys") || "[]"));
+  keys.delete(key);
+  localStorage.setItem("raft-kv-keys", JSON.stringify([...keys]));
+}
+
+function showGatewayError(error) {
+  $("#formNote").textContent = `Gateway error: ${error.message}`;
+}
+
+async function loadFromGateway() {
+  const pill = $("#connectionPill");
+  try {
+    const health = await fetch(`${API_BASE}/health`);
+    if (!health.ok) throw new Error("Raft node is unavailable");
+    pill.innerHTML = '<span class="pulse"></span> Live cluster';
+    pill.classList.add("connected");
+    const keys = JSON.parse(localStorage.getItem("raft-kv-keys") || "[]");
+    const values = await Promise.all(keys.map(async (key) => {
+      const response = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(key)}`);
+      const data = await response.json();
+      return data.found ? { key, value: data.value, updated: "from Raft" } : null;
+    }));
+    entries = values.filter(Boolean);
+    renderEntries();
+    $("#formNote").textContent = "Connected to the Raft gateway.";
+  } catch (error) {
+    pill.innerHTML = '<span class="pulse"></span> Gateway offline';
+    pill.classList.remove("connected");
+    $("#formNote").textContent = "Start gateway.py to connect this console to the cluster.";
+    renderEntries();
+  }
+}
 
 renderEntries();
 renderNodes();
 renderActivity();
+loadFromGateway();

@@ -113,15 +113,21 @@ localhost:50053
 ## Operator console
 
 The `web/` directory contains a lightweight dashboard for exploring the store from a browser.
-It currently runs in local demo mode, so its mutations stay in the browser. The layout is
-ready to connect to a REST or WebSocket gateway in front of the gRPC service.
+The Python gateway forwards browser CRUD requests to the real C++ gRPC node.
 
 ```powershell
+# Terminal 1: serve the UI
 python -m http.server 4173 --directory web
+
+# Terminal 2: install and run the REST-to-gRPC gateway
+python -m pip install -r requirements.txt
+python gateway.py --target localhost:50051 --port 8080
 ```
 
-Open `http://localhost:4173` after starting the server. The console includes a key browser,
-local CRUD controls, node topology, replication summary, and recent Raft activity.
+Open `http://localhost:4173` after starting the gateway and the Raft node. The console includes
+live health status, key CRUD requests, node topology, replication summary, and recent activity.
+The current protobuf API has no list-keys RPC, so the browser remembers keys written through
+the console and reads each one back through the gateway.
 
 ## License
 

@@ -135,6 +135,25 @@ the client:
 Membership can be reloaded without restarting a node. Pass `--peers-file` and keep one
 `host:port` endpoint per line; editing the file updates the peer set automatically.
 
+## 11. Browser Console and Gateway
+
+The browser console uses a small Python gateway to translate HTTP requests into the
+existing gRPC API. Install its dependencies and run it alongside the static web server:
+
+```powershell
+python -m pip install -r requirements.txt
+
+# Terminal 1: gateway to the C++ node
+python gateway.py --target localhost:50051 --port 8080
+
+# Terminal 2: browser UI
+python -m http.server 4173 --directory web
+```
+
+Open `http://localhost:4173`. For a TLS-enabled node, add `--ca`, `--cert`, and `--key`
+to the gateway command. The dashboard now reports gateway health and sends CRUD mutations
+to the Raft service instead of keeping them only in browser memory.
+
 ## Troubleshooting
 
 - **"cannot open source file grpcpp/grpcpp.h" in the editor** — this is just an IDE IntelliSense path issue and doesn't affect compilation via CMake; it resolves once you configure CMake Tools in your editor to point at the `build` folder.

@@ -2,3 +2,5 @@ build/
 *.exe
 *.obj
 *.pdb
+__pycache__/
+*.pyc

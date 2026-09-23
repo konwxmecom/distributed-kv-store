@@ -17,7 +17,7 @@
         <span><strong>Raft KV</strong><small>control console</small></span>
       </a>
       <div class="topbar-actions">
-        <span class="mode-pill"><span class="pulse"></span> Demo cluster</span>
+        <span class="mode-pill" id="connectionPill"><span class="pulse"></span> Connecting…</span>
         <button class="icon-button" id="refreshButton" title="Refresh dashboard" aria-label="Refresh dashboard">↻</button>
       </div>
     </header>
@@ -81,7 +81,7 @@
             <label>Value<textarea id="valueInput" required maxlength="240" rows="3" placeholder="Value replicated through Raft"></textarea></label>
             <button class="submit-button" type="submit">Append to log <span>→</span></button>
           </form>
-          <p class="form-note" id="formNote">Writes are simulated locally in this console.</p>
+          <p class="form-note" id="formNote">Connecting to the Raft gateway…</p>
         </section>
       </div>
     </main>
