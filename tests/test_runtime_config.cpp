@@ -73,3 +73,14 @@ TEST(RuntimeConfig, RejectsPartialTlsConfiguration)
     EXPECT_THROW(LoadRuntimeConfig(path), std::runtime_error);
     std::filesystem::remove(path);
 }
+
+TEST(RuntimeConfig, IgnoresInlineComments)
+{
+    const auto path = std::filesystem::temp_directory_path() / "kvstore-runtime-comments.conf";
+    {
+        std::ofstream output(path);
+        output << "port = 50051 # public listener\n";
+    }
+    EXPECT_EQ(LoadRuntimeConfig(path).port, "50051");
+    std::filesystem::remove(path);
+}
