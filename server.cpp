@@ -132,7 +132,7 @@ private:
 
     // Core Raft state.
     std::atomic<NodeState> state{NodeState::FOLLOWER};
-    std::atomic<int> current_term{0};
+    int current_term = 0;
     int voted_for = -1;
     int node_id;
     std::mutex election_mutex;
@@ -218,7 +218,11 @@ private:
         {
             std::ifstream metadata(metadata_path);
             if (metadata)
-                metadata >> current_term >> voted_for;
+            {
+                int recovered_term = 0;
+                metadata >> recovered_term >> voted_for;
+                current_term = recovered_term;
+            }
         }
 
         const auto wal_path = data_directory / "raft.wal";

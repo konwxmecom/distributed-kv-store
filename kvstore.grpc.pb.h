@@ -15,20 +15,19 @@
 #include <grpcpp/completion_queue.h>
 #include <grpcpp/support/message_allocator.h>
 #include <grpcpp/support/method_handler.h>
-#include <grpcpp/impl/proto_utils.h>
+#include <grpcpp/impl/codegen/proto_utils.h>
 #include <grpcpp/impl/rpc_method.h>
 #include <grpcpp/support/server_callback.h>
-#include <grpcpp/impl/server_callback_handlers.h>
+#include <grpcpp/impl/codegen/server_callback_handlers.h>
 #include <grpcpp/server_context.h>
 #include <grpcpp/impl/service_type.h>
-#include <grpcpp/support/status.h>
+#include <grpcpp/impl/codegen/status.h>
 #include <grpcpp/support/stub_options.h>
 #include <grpcpp/support/sync_stream.h>
-#include <grpcpp/ports_def.inc>
 
 namespace kvstore {
 
-// Service defines the operations our KV store supports
+// KVStore defines a distributed key-value store service backed by Raft consensus.
 class KVStore final {
  public:
   static constexpr char const* service_full_name() {
@@ -37,6 +36,7 @@ class KVStore final {
   class StubInterface {
    public:
     virtual ~StubInterface() {}
+    // Client-facing operations
     virtual ::grpc::Status Get(::grpc::ClientContext* context, const ::kvstore::GetRequest& request, ::kvstore::GetResponse* response) = 0;
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::GetResponse>> AsyncGet(::grpc::ClientContext* context, const ::kvstore::GetRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::GetResponse>>(AsyncGetRaw(context, request, cq));
@@ -58,6 +58,7 @@ class KVStore final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::DeleteResponse>> PrepareAsyncDelete(::grpc::ClientContext* context, const ::kvstore::DeleteRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::DeleteResponse>>(PrepareAsyncDeleteRaw(context, request, cq));
     }
+    // Legacy leader-to-follower replication call (superseded by AppendEntries)
     virtual ::grpc::Status Replicate(::grpc::ClientContext* context, const ::kvstore::SetRequest& request, ::kvstore::SetResponse* response) = 0;
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::SetResponse>> AsyncReplicate(::grpc::ClientContext* context, const ::kvstore::SetRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::SetResponse>>(AsyncReplicateRaw(context, request, cq));
@@ -65,7 +66,7 @@ class KVStore final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::SetResponse>> PrepareAsyncReplicate(::grpc::ClientContext* context, const ::kvstore::SetRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::SetResponse>>(PrepareAsyncReplicateRaw(context, request, cq));
     }
-    // leader-to-follower internal call
+    // Cluster membership / liveness
     virtual ::grpc::Status Heartbeat(::grpc::ClientContext* context, const ::kvstore::HeartbeatRequest& request, ::kvstore::HeartbeatResponse* response) = 0;
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::HeartbeatResponse>> AsyncHeartbeat(::grpc::ClientContext* context, const ::kvstore::HeartbeatRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::HeartbeatResponse>>(AsyncHeartbeatRaw(context, request, cq));
@@ -73,6 +74,7 @@ class KVStore final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::HeartbeatResponse>> PrepareAsyncHeartbeat(::grpc::ClientContext* context, const ::kvstore::HeartbeatRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::HeartbeatResponse>>(PrepareAsyncHeartbeatRaw(context, request, cq));
     }
+    // Raft consensus RPCs
     virtual ::grpc::Status RequestVote(::grpc::ClientContext* context, const ::kvstore::VoteRequest& request, ::kvstore::VoteResponse* response) = 0;
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::VoteResponse>> AsyncRequestVote(::grpc::ClientContext* context, const ::kvstore::VoteRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::kvstore::VoteResponse>>(AsyncRequestVoteRaw(context, request, cq));
@@ -90,17 +92,20 @@ class KVStore final {
     class async_interface {
      public:
       virtual ~async_interface() {}
+      // Client-facing operations
       virtual void Get(::grpc::ClientContext* context, const ::kvstore::GetRequest* request, ::kvstore::GetResponse* response, std::function<void(::grpc::Status)>) = 0;
       virtual void Get(::grpc::ClientContext* context, const ::kvstore::GetRequest* request, ::kvstore::GetResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
       virtual void Set(::grpc::ClientContext* context, const ::kvstore::SetRequest* request, ::kvstore::SetResponse* response, std::function<void(::grpc::Status)>) = 0;
       virtual void Set(::grpc::ClientContext* context, const ::kvstore::SetRequest* request, ::kvstore::SetResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
       virtual void Delete(::grpc::ClientContext* context, const ::kvstore::DeleteRequest* request, ::kvstore::DeleteResponse* response, std::function<void(::grpc::Status)>) = 0;
       virtual void Delete(::grpc::ClientContext* context, const ::kvstore::DeleteRequest* request, ::kvstore::DeleteResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
+      // Legacy leader-to-follower replication call (superseded by AppendEntries)
       virtual void Replicate(::grpc::ClientContext* context, const ::kvstore::SetRequest* request, ::kvstore::SetResponse* response, std::function<void(::grpc::Status)>) = 0;
       virtual void Replicate(::grpc::ClientContext* context, const ::kvstore::SetRequest* request, ::kvstore::SetResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      // leader-to-follower internal call
+      // Cluster membership / liveness
       virtual void Heartbeat(::grpc::ClientContext* context, const ::kvstore::HeartbeatRequest* request, ::kvstore::HeartbeatResponse* response, std::function<void(::grpc::Status)>) = 0;
       virtual void Heartbeat(::grpc::ClientContext* context, const ::kvstore::HeartbeatRequest* request, ::kvstore::HeartbeatResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
+      // Raft consensus RPCs
       virtual void RequestVote(::grpc::ClientContext* context, const ::kvstore::VoteRequest* request, ::kvstore::VoteResponse* response, std::function<void(::grpc::Status)>) = 0;
       virtual void RequestVote(::grpc::ClientContext* context, const ::kvstore::VoteRequest* request, ::kvstore::VoteResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
       virtual void AppendEntries(::grpc::ClientContext* context, const ::kvstore::AppendEntriesRequest* request, ::kvstore::AppendEntriesResponse* response, std::function<void(::grpc::Status)>) = 0;
@@ -233,12 +238,15 @@ class KVStore final {
    public:
     Service();
     virtual ~Service();
+    // Client-facing operations
     virtual ::grpc::Status Get(::grpc::ServerContext* context, const ::kvstore::GetRequest* request, ::kvstore::GetResponse* response);
     virtual ::grpc::Status Set(::grpc::ServerContext* context, const ::kvstore::SetRequest* request, ::kvstore::SetResponse* response);
     virtual ::grpc::Status Delete(::grpc::ServerContext* context, const ::kvstore::DeleteRequest* request, ::kvstore::DeleteResponse* response);
+    // Legacy leader-to-follower replication call (superseded by AppendEntries)
     virtual ::grpc::Status Replicate(::grpc::ServerContext* context, const ::kvstore::SetRequest* request, ::kvstore::SetResponse* response);
-    // leader-to-follower internal call
+    // Cluster membership / liveness
     virtual ::grpc::Status Heartbeat(::grpc::ServerContext* context, const ::kvstore::HeartbeatRequest* request, ::kvstore::HeartbeatResponse* response);
+    // Raft consensus RPCs
     virtual ::grpc::Status RequestVote(::grpc::ServerContext* context, const ::kvstore::VoteRequest* request, ::kvstore::VoteResponse* response);
     virtual ::grpc::Status AppendEntries(::grpc::ServerContext* context, const ::kvstore::AppendEntriesRequest* request, ::kvstore::AppendEntriesResponse* response);
   };
@@ -1184,5 +1192,4 @@ class KVStore final {
 }  // namespace kvstore
 
 
-#include <grpcpp/ports_undef.inc>
 #endif  // GRPC_kvstore_2eproto__INCLUDED
