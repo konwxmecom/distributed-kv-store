@@ -66,7 +66,8 @@ RuntimeConfig LoadRuntimeConfig(const std::filesystem::path &path)
     while (std::getline(input, line))
     {
         ++line_number;
-        const auto trimmed = Trim(line);
+        const auto comment = line.find('#');
+        const auto trimmed = Trim(line.substr(0, comment));
         if (trimmed.empty() || trimmed.front() == '#')
             continue;
         const auto separator = trimmed.find('=');
