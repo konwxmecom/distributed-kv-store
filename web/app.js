@@ -138,6 +138,13 @@ async function loadFromGateway() {
     pill.innerHTML = '<span class="pulse"></span> Live cluster';
     pill.classList.add("connected");
 
+    const clusterResponse = await fetch(`${API_BASE}/cluster`);
+    const cluster = await clusterResponse.json();
+    const leaderLabel = cluster.is_leader ? `node-${cluster.node_id}` : `node-${cluster.leader_id || cluster.node_id}`;
+    $("#heroLeader").textContent = leaderLabel;
+    $("#termMetric").textContent = String(cluster.current_term ?? 0);
+    $("#commitMetric").textContent = String(cluster.commit_index ?? 0);
+
     const keysResponse = await fetch(`${API_BASE}/keys`);
     if (!keysResponse.ok) throw new Error("could not list keys from cluster");
     const keysData = await keysResponse.json();

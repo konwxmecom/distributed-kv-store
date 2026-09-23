@@ -121,6 +121,20 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 self._send(502, {"error": error.details()})
             return
 
+        if parsed.path == "/api/cluster":
+            try:
+                response = self.stub.GetClusterStatus(self.pb2.ClusterStatusRequest(), timeout=5)
+                self._send(200, {
+                    "node_id": response.node_id,
+                    "leader_id": response.leader_id,
+                    "current_term": response.current_term,
+                    "commit_index": response.commit_index,
+                    "is_leader": response.is_leader,
+                })
+            except grpc.RpcError as error:
+                self._send(502, {"error": error.details()})
+            return
+
         if parsed.path == "/api/entry":
             key = parse_qs(parsed.query).get("key", [""])[0]
             if not key:
