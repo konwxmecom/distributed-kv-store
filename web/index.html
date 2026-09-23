@@ -32,15 +32,15 @@
         <div class="hero-stamp">
           <span class="stamp-label">Current leader</span>
           <strong id="heroLeader">node-50051</strong>
-          <span class="stamp-meta"><i></i> healthy · term 18</span>
+          <span class="stamp-meta" id="leaderMeta"><i></i> waiting for gateway</span>
         </div>
       </section>
 
       <section class="metrics" aria-label="Cluster metrics">
-        <article class="metric-card accent-green"><span class="metric-label">Cluster health</span><strong>Healthy</strong><small>3 / 3 nodes responding</small></article>
-        <article class="metric-card"><span class="metric-label">Current term</span><strong id="termMetric">18</strong><small>last election 4m ago</small></article>
-        <article class="metric-card"><span class="metric-label">Committed entries</span><strong id="commitMetric">248</strong><small>99.8% replicated</small></article>
-        <article class="metric-card accent-yellow"><span class="metric-label">Snapshot</span><strong>92%</strong><small>next compaction in 20 entries</small></article>
+        <article class="metric-card accent-green"><span class="metric-label">Cluster health</span><strong id="healthMetric">Connecting</strong><small id="healthDetail">checking gateway</small></article>
+        <article class="metric-card"><span class="metric-label">Current term</span><strong id="termMetric">—</strong><small>reported by Raft</small></article>
+        <article class="metric-card"><span class="metric-label">Committed entries</span><strong id="commitMetric">—</strong><small>current commit index</small></article>
+        <article class="metric-card accent-yellow"><span class="metric-label">Snapshot</span><strong id="snapshotMetric">—</strong><small>storage state</small></article>
       </section>
 
       <div class="content-grid">
@@ -66,7 +66,7 @@
           <div class="panel-heading compact"><div><p class="section-kicker">Topology</p><h2>Cluster nodes</h2></div><span class="online-count">3 online</span></div>
           <div class="node-list" id="nodeList"></div>
           <div class="panel-divider"></div>
-          <div class="replication-summary"><div><span>Replication lag</span><strong>0 ms</strong></div><div><span>Quorum</span><strong>2 / 3</strong></div></div>
+          <div class="replication-summary"><div><span>Commit index</span><strong id="commitSummary">—</strong></div><div><span>Node state</span><strong id="nodeSummary">—</strong></div></div>
         </aside>
 
         <section class="panel activity-panel">
