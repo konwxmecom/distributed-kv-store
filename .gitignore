@@ -4,3 +4,8 @@ build/
 *.pdb
 __pycache__/
 *.pyc
+data/
+*.pem
+*.key
+config/*.conf
+!config/*.conf.example
