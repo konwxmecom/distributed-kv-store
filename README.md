@@ -119,6 +119,11 @@ For mTLS, pass the CA, certificate, and private key to both servers and clients:
 .\build\Debug\client.exe --address localhost:50051 --ca ca.pem --cert client.pem --key client-key.pem
 ```
 
+The server flushes committed log records to `raft.wal` before acknowledging writes.
+After the compaction threshold is reached, committed state is written to
+`raft.snapshot` and the obsolete WAL prefix is removed. Restart recovery loads the
+snapshot first and then replays the remaining WAL suffix.
+
 To reload membership without restarting a node, pass `--peers-file`. Put one `host:port`
 per line in the file and edit it while the node is running:
 
