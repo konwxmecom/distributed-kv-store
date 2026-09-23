@@ -1,3 +1,4 @@
+.node-unavailable { padding: 18px 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 :root {
   --ink: #17231f;
   --muted: #718078;
