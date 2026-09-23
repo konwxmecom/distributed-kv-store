@@ -24,6 +24,8 @@ using grpc::ServerContext;
 using grpc::Status;
 using kvstore::AppendEntriesRequest;
 using kvstore::AppendEntriesResponse;
+using kvstore::ClusterStatusRequest;
+using kvstore::ClusterStatusResponse;
 using kvstore::DeleteRequest;
 using kvstore::DeleteResponse;
 using kvstore::GetRequest;
@@ -31,8 +33,13 @@ using kvstore::GetResponse;
 using kvstore::HeartbeatRequest;
 using kvstore::HeartbeatResponse;
 using kvstore::KVStore;
-    using kvstore::ListKeysRequest;
-    using kvstore::ListKeysResponse;
+using kvstore::ListKeysRequest;
+using kvstore::ListKeysResponse;
+using kvstore::LogEntry;
+using kvstore::SetRequest;
+using kvstore::SetResponse;
+using kvstore::VoteRequest;
+using kvstore::VoteResponse;
 
 struct TlsConfig
 {
@@ -723,6 +730,16 @@ public:
         {
             response->add_keys(key);
         }
+        return Status::OK;
+    }
+
+    Status GetClusterStatus(ServerContext *context, const ClusterStatusRequest *request, ClusterStatusResponse *response) override
+    {
+        response->set_node_id(node_id);
+        response->set_current_term(current_term);
+        response->set_commit_index(commit_index);
+        response->set_is_leader(state == NodeState::LEADER);
+        response->set_leader_id(state == NodeState::LEADER ? node_id : -1);
         return Status::OK;
     }
 
