@@ -1,0 +1,8 @@
+# Copy this file to a node-specific path before starting the server.
+port = 50051
+peers = localhost:50052, localhost:50053
+data_root = data
+# peers_file = peers-50051.txt
+# ca = certs/ca.pem
+# cert = certs/node-50051.pem
+# key = certs/node-50051-key.pem
