@@ -50,3 +50,14 @@ TEST(RuntimeConfig, RejectsMissingFile)
     std::filesystem::remove(path);
     EXPECT_THROW(LoadRuntimeConfig(path), std::runtime_error);
 }
+
+TEST(RuntimeConfig, RejectsMalformedLines)
+{
+    const auto path = std::filesystem::temp_directory_path() / "kvstore-runtime-malformed.conf";
+    {
+        std::ofstream output(path);
+        output << "port 50051\n";
+    }
+    EXPECT_THROW(LoadRuntimeConfig(path), std::runtime_error);
+    std::filesystem::remove(path);
+}
