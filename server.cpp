@@ -71,6 +71,9 @@ private:
 
     // Replicated log and commit tracking.
     std::vector<LogEntry> log_entries;
+    int log_offset = 0; // absolute index represented by log_entries[0]
+    int snapshot_last_index = -1;
+    int snapshot_last_term = 0;
     int commit_index = -1; // highest log index known to be committed
     int last_applied = -1; // highest log index applied to the state machine
     std::mutex log_mutex;
@@ -136,6 +139,7 @@ private:
     void LoadPersistentState()
     {
         std::filesystem::create_directories(data_directory);
+        LoadSnapshot();
         const auto metadata_path = data_directory / "raft.meta";
         {
             std::ifstream metadata(metadata_path);
@@ -174,6 +178,87 @@ private:
         std::filesystem::rename(temporary, metadata_path);
     }
 
+    void LoadSnapshot()
+    {
+        const auto snapshot_path = data_directory / "raft.snapshot";
+        std::ifstream input(snapshot_path, std::ios::binary);
+        if (!input)
+            return;
+
+        std::uint32_t count = 0;
+        input.read(reinterpret_cast<char *>(&snapshot_last_index), sizeof(snapshot_last_index));
+        input.read(reinterpret_cast<char *>(&snapshot_last_term), sizeof(snapshot_last_term));
+        input.read(reinterpret_cast<char *>(&count), sizeof(count));
+        if (!input || count > 10000000)
+            throw std::runtime_error("invalid Raft snapshot header");
+
+        for (std::uint32_t i = 0; i < count; ++i)
+        {
+            std::uint32_t key_size = 0;
+            std::uint32_t value_size = 0;
+            input.read(reinterpret_cast<char *>(&key_size), sizeof(key_size));
+            input.read(reinterpret_cast<char *>(&value_size), sizeof(value_size));
+            if (!input || key_size > 64 * 1024 * 1024 || value_size > 64 * 1024 * 1024)
+                throw std::runtime_error("invalid Raft snapshot record");
+            std::string key(key_size, '\0');
+            std::string value(value_size, '\0');
+            input.read(key.data(), key_size);
+            input.read(value.data(), value_size);
+            if (!input)
+                throw std::runtime_error("truncated Raft snapshot");
+            store.emplace(std::move(key), std::move(value));
+        }
+        log_offset = snapshot_last_index + 1;
+        commit_index = snapshot_last_index;
+        last_applied = snapshot_last_index;
+    }
+
+    void CompactSnapshot()
+    {
+        if (commit_index - log_offset < 100)
+            return;
+
+        const int target = commit_index - 50;
+        if (target < log_offset || target >= log_offset + static_cast<int>(log_entries.size()))
+            return;
+        for (const auto &peer_match : match_index)
+        {
+            if (peer_match < target)
+                return;
+        }
+
+        const auto snapshot_path = data_directory / "raft.snapshot";
+        const auto temporary = data_directory / "raft.snapshot.tmp";
+        const auto snapshot_term = log_entries[target - log_offset].term();
+        {
+            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+            const auto count = static_cast<std::uint32_t>(store.size());
+            output.write(reinterpret_cast<const char *>(&target), sizeof(target));
+            output.write(reinterpret_cast<const char *>(&snapshot_term), sizeof(snapshot_term));
+            output.write(reinterpret_cast<const char *>(&count), sizeof(count));
+            for (const auto &[key, value] : store)
+            {
+                const auto key_size = static_cast<std::uint32_t>(key.size());
+                const auto value_size = static_cast<std::uint32_t>(value.size());
+                output.write(reinterpret_cast<const char *>(&key_size), sizeof(key_size));
+                output.write(reinterpret_cast<const char *>(&value_size), sizeof(value_size));
+                output.write(key.data(), static_cast<std::streamsize>(key.size()));
+                output.write(value.data(), static_cast<std::streamsize>(value.size()));
+            }
+            output.flush();
+            if (!output)
+                throw std::runtime_error("failed to write Raft snapshot");
+        }
+        std::filesystem::rename(temporary, snapshot_path);
+
+        log_entries.erase(log_entries.begin(), log_entries.begin() + (target - log_offset + 1));
+        log_offset = target + 1;
+        snapshot_last_index = target;
+        snapshot_last_term = snapshot_term;
+        RewriteWal();
+        std::cout << "Compacted Raft log through index " << target << std::endl;
+    }
+
     // Generates a randomized election timeout to reduce the chance of
     // multiple nodes becoming candidates simultaneously (split votes).
     int RandomElectionTimeout()
@@ -190,7 +275,7 @@ private:
         while (last_applied < commit_index)
         {
             last_applied++;
-            const auto &e = log_entries[last_applied];
+            const auto &e = log_entries[last_applied - log_offset];
             std::lock_guard<std::mutex> store_lock(store_mutex);
             store[e.key()] = e.value();
             std::cout << "APPLIED index=" << last_applied << " " << e.key() << "=" << e.value() << std::endl;
@@ -212,10 +297,15 @@ private:
                 req.set_leader_term(current_term);
                 req.set_leader_id(node_id);
                 req.set_prev_log_index(ni - 1);
-                req.set_prev_log_term(ni - 1 >= 0 ? log_entries[ni - 1].term() : 0);
-                for (int i = ni; i < (int)log_entries.size(); i++)
+                if (ni - 1 == snapshot_last_index)
+                    req.set_prev_log_term(snapshot_last_term);
+                else if (ni - 1 >= log_offset)
+                    req.set_prev_log_term(log_entries[ni - 1 - log_offset].term());
+                else
+                    req.set_prev_log_term(0);
+                for (int i = ni; i < log_offset + (int)log_entries.size(); i++)
                 {
-                    *req.add_entries() = log_entries[i];
+                    *req.add_entries() = log_entries[i - log_offset];
                 }
                 req.set_leader_commit(commit_index);
             }
@@ -230,7 +320,7 @@ private:
             if (resp.success())
             {
                 std::lock_guard<std::mutex> lock(log_mutex);
-                match_index[peer_idx] = (int)log_entries.size() - 1;
+                match_index[peer_idx] = log_offset + (int)log_entries.size() - 1;
                 next_index[peer_idx] = match_index[peer_idx] + 1;
                 return true;
             }
@@ -296,8 +386,8 @@ private:
             std::lock_guard<std::mutex> log_lock(log_mutex);
             for (size_t i = 0; i < next_index.size(); i++)
             {
-                next_index[i] = (int)log_entries.size();
-                match_index[i] = -1;
+                next_index[i] = log_offset + (int)log_entries.size();
+                match_index[i] = snapshot_last_index;
             }
         }
         else
@@ -324,8 +414,8 @@ public:
             peer_stubs.push_back(KVStore::NewStub(channel));
         }
 
-        next_index.assign(peer_stubs.size(), 0);
-        match_index.assign(peer_stubs.size(), -1);
+        next_index.assign(peer_stubs.size(), log_offset + (int)log_entries.size());
+        match_index.assign(peer_stubs.size(), snapshot_last_index);
 
         // Background thread: watches for election timeouts and triggers
         // an election if we haven't heard from a leader recently enough.
@@ -389,7 +479,11 @@ public:
         // The leader will back off and retry with an earlier index.
         if (prev_index >= 0)
         {
-            if ((int)log_entries.size() <= prev_index || log_entries[prev_index].term() != prev_term)
+            const bool snapshot_matches = prev_index == snapshot_last_index && prev_term == snapshot_last_term;
+            const bool log_matches = prev_index >= log_offset &&
+                                     prev_index < log_offset + (int)log_entries.size() &&
+                                     log_entries[prev_index - log_offset].term() == prev_term;
+            if (!snapshot_matches && !log_matches)
             {
                 response->set_term(current_term);
                 response->set_success(false);
@@ -398,7 +492,8 @@ public:
         }
 
         // Drop any conflicting entries and append the new ones.
-        log_entries.resize(prev_index + 1);
+        const int prefix_size = prev_index < log_offset ? 0 : prev_index - log_offset + 1;
+        log_entries.resize(prefix_size);
         for (const auto &e : request->entries())
         {
             log_entries.push_back(e);
@@ -407,13 +502,16 @@ public:
 
         if (request->leader_commit() > commit_index)
         {
-            commit_index = std::min(request->leader_commit(), (int)log_entries.size() - 1);
+            const int last_log_index = log_offset + (int)log_entries.size() - 1;
+            commit_index = std::min(request->leader_commit(),
+                                    std::max(snapshot_last_index, last_log_index));
         }
         ApplyCommitted();
 
         response->set_term(current_term);
         response->set_success(true);
-        response->set_match_index((int)log_entries.size() - 1);
+        response->set_match_index(std::max(snapshot_last_index,
+                           log_offset + (int)log_entries.size() - 1));
         return Status::OK;
     }
 
@@ -488,7 +586,7 @@ public:
             std::lock_guard<std::mutex> lock(log_mutex);
             log_entries.push_back(entry);
             PersistRecord(entry);
-            new_index = (int)log_entries.size() - 1;
+            new_index = log_offset + (int)log_entries.size() - 1;
         }
         std::cout << "LOG APPEND index=" << new_index << " " << request->key() << "=" << request->value() << std::endl;
 
@@ -507,6 +605,7 @@ public:
                 if (new_index > commit_index)
                     commit_index = new_index;
                 ApplyCommitted();
+                CompactSnapshot();
             }
 
             // Send a second round so followers receive the updated commit
