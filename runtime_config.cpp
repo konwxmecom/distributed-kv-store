@@ -78,5 +78,9 @@ RuntimeConfig LoadRuntimeConfig(const std::filesystem::path &path)
             throw std::runtime_error("invalid runtime config at line " + std::to_string(line_number));
         Assign(config, key, value);
     }
+    const bool any_tls = !config.ca_file.empty() || !config.certificate_file.empty() || !config.private_key_file.empty();
+    const bool complete_tls = !config.ca_file.empty() && !config.certificate_file.empty() && !config.private_key_file.empty();
+    if (any_tls && !complete_tls)
+        throw std::runtime_error("ca, cert, and key must be configured together");
     return config;
 }
