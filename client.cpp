@@ -1,6 +1,8 @@
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <string>
+#include <stdexcept>
 
 #include <grpcpp/grpcpp.h>
 #include "kvstore.grpc.pb.h"
@@ -13,6 +15,26 @@ using kvstore::GetResponse;
 using kvstore::KVStore;
 using kvstore::SetRequest;
 using kvstore::SetResponse;
+
+struct TlsConfig
+{
+    std::string ca_file;
+    std::string certificate_file;
+    std::string private_key_file;
+
+    bool Enabled() const
+    {
+        return !ca_file.empty() && !certificate_file.empty() && !private_key_file.empty();
+    }
+};
+
+static std::string ReadTextFile(const std::string &path)
+{
+    std::ifstream input(path);
+    if (!input)
+        throw std::runtime_error("failed to read TLS file: " + path);
+    return {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+}
 
 // A thin wrapper around the generated gRPC stub, exposing simple
 // Set()/Get() methods for interacting with the KV store cluster.
@@ -76,12 +98,36 @@ public:
     }
 };
 
-int main()
+int main(int argc, char **argv)
 {
-    // Connects to the node running on port 50051. Point this at any node
-    // in the cluster - reads/writes should be sent to the current leader.
-    KVStoreClient client(
-        grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials()));
+    TlsConfig tls_config;
+    std::string address = "localhost:50051";
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::string(argv[i]) == "--address" && i + 1 < argc)
+            address = argv[++i];
+        else if (std::string(argv[i]) == "--ca" && i + 1 < argc)
+            tls_config.ca_file = argv[++i];
+        else if (std::string(argv[i]) == "--cert" && i + 1 < argc)
+            tls_config.certificate_file = argv[++i];
+        else if (std::string(argv[i]) == "--key" && i + 1 < argc)
+            tls_config.private_key_file = argv[++i];
+    }
+
+    std::shared_ptr<grpc::ChannelCredentials> credentials;
+    if (tls_config.Enabled())
+    {
+        grpc::SslCredentialsOptions options;
+        options.pem_root_certs = ReadTextFile(tls_config.ca_file);
+        options.pem_cert_chain = ReadTextFile(tls_config.certificate_file);
+        options.pem_private_key = ReadTextFile(tls_config.private_key_file);
+        credentials = grpc::SslCredentials(options);
+    }
+    else
+    {
+        credentials = grpc::InsecureChannelCredentials();
+    }
+    KVStoreClient client(grpc::CreateChannel(address, credentials));
 
     // Basic smoke test: write a key, read it back, and confirm a missing
     // key correctly reports "not found".

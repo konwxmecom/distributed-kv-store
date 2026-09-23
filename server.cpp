@@ -37,6 +37,26 @@ using kvstore::SetResponse;
 using kvstore::VoteRequest;
 using kvstore::VoteResponse;
 
+struct TlsConfig
+{
+    std::string ca_file;
+    std::string certificate_file;
+    std::string private_key_file;
+
+    bool Enabled() const
+    {
+        return !ca_file.empty() && !certificate_file.empty() && !private_key_file.empty();
+    }
+};
+
+static std::string ReadTextFile(const std::string &path)
+{
+    std::ifstream input(path);
+    if (!input)
+        throw std::runtime_error("failed to read TLS file: " + path);
+    return {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+}
+
 // The three states a Raft node can be in at any point in time.
 enum class NodeState
 {
@@ -81,6 +101,7 @@ private:
     std::vector<int> match_index; // leader-only: highest log index known to be replicated on each peer
     std::filesystem::path data_directory;
     std::ofstream wal;
+    TlsConfig tls_config;
 
     static bool ReadRecord(std::ifstream &input, std::string &record)
     {
@@ -401,16 +422,31 @@ private:
 public:
     KVStoreServiceImpl(int my_port, const std::vector<std::string> &peer_addresses,
                        const std::vector<int> &peer_port_ids,
-                       const std::filesystem::path &storage_path)
+                       const std::filesystem::path &storage_path,
+                       const TlsConfig &security_config)
     {
         node_id = my_port;
         data_directory = storage_path;
+        tls_config = security_config;
         last_heartbeat = std::chrono::steady_clock::now();
         LoadPersistentState();
 
         for (const auto &addr : peer_addresses)
         {
-            auto channel = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
+            std::shared_ptr<grpc::ChannelCredentials> credentials;
+            if (tls_config.Enabled())
+            {
+                grpc::SslCredentialsOptions options;
+                options.pem_root_certs = ReadTextFile(tls_config.ca_file);
+                options.pem_cert_chain = ReadTextFile(tls_config.certificate_file);
+                options.pem_private_key = ReadTextFile(tls_config.private_key_file);
+                credentials = grpc::SslCredentials(options);
+            }
+            else
+            {
+                credentials = grpc::InsecureChannelCredentials();
+            }
+            auto channel = grpc::CreateChannel(addr, credentials);
             peer_stubs.push_back(KVStore::NewStub(channel));
         }
 
@@ -630,14 +666,28 @@ public:
 };
 
 void RunServer(const std::string &port, const std::vector<std::string> &peer_addresses,
-               const std::vector<int> &peer_ids)
+               const std::vector<int> &peer_ids, const TlsConfig &tls_config)
 {
     std::string server_address = "0.0.0.0:" + port;
     KVStoreServiceImpl service(std::stoi(port), peer_addresses, peer_ids,
-                               std::filesystem::path("data") / ("node_" + port));
+                               std::filesystem::path("data") / ("node_" + port), tls_config);
 
     ServerBuilder builder;
-    builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+    if (tls_config.Enabled())
+    {
+        grpc::SslServerCredentialsOptions options;
+        options.pem_root_certs = ReadTextFile(tls_config.ca_file);
+        grpc::SslServerCredentialsOptions::PemKeyCertPair key_cert;
+        key_cert.private_key = ReadTextFile(tls_config.private_key_file);
+        key_cert.cert_chain = ReadTextFile(tls_config.certificate_file);
+        options.pem_key_cert_pairs.push_back(std::move(key_cert));
+        options.client_certificate_request = GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY;
+        builder.AddListeningPort(server_address, grpc::SslServerCredentials(options));
+    }
+    else
+    {
+        builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+    }
     builder.RegisterService(&service);
 
     std::unique_ptr<Server> server(builder.BuildAndStart());
@@ -669,13 +719,31 @@ int main(int argc, char **argv)
     std::string port = argv[1];
     std::vector<std::string> peer_addresses;
     std::vector<int> peer_ids;
+    TlsConfig tls_config;
 
     for (int i = 2; i < argc; i++)
     {
+        if (std::string(argv[i]) == "--ca" && i + 1 < argc)
+        {
+            tls_config.ca_file = argv[++i];
+            continue;
+        }
+        if (std::string(argv[i]) == "--cert" && i + 1 < argc)
+        {
+            tls_config.certificate_file = argv[++i];
+            continue;
+        }
+        if (std::string(argv[i]) == "--key" && i + 1 < argc)
+        {
+            tls_config.private_key_file = argv[++i];
+            continue;
+        }
         peer_addresses.push_back("localhost:" + std::string(argv[i]));
         peer_ids.push_back(std::stoi(argv[i]));
     }
 
-    RunServer(port, peer_addresses, peer_ids);
+    if (tls_config.Enabled())
+        std::cout << "TLS/mTLS enabled" << std::endl;
+    RunServer(port, peer_addresses, peer_ids, tls_config);
     return 0;
 }
