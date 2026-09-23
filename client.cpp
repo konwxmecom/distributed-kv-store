@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <stdexcept>
+#include <vector>
 
 #include <grpcpp/grpcpp.h>
 #include "kvstore.grpc.pb.h"
@@ -41,13 +42,28 @@ static std::string ReadTextFile(const std::string &path)
 class KVStoreClient
 {
 private:
+    std::shared_ptr<Channel> channel_;
     std::unique_ptr<KVStore::Stub> stub_;
+
+    template <typename Request, typename Response>
+    bool TryCall(const std::string &method_name,
+                 const Request &request,
+                 Response *response,
+                 std::function<Status(grpc::ClientContext *, const Request &, Response *)> call)
+    {
+        grpc::ClientContext context;
+        Status status = call(&context, request, response);
+        if (status.ok())
+            return true;
+
+        std::cout << method_name << " failed: " << status.error_message() << std::endl;
+        return false;
+    }
 
 public:
     explicit KVStoreClient(std::shared_ptr<Channel> channel)
-        : stub_(KVStore::NewStub(channel)) {}
+        : channel_(std::move(channel)), stub_(KVStore::NewStub(channel_)) {}
 
-    // Sends a Set RPC. Returns true if the write succeeded.
     bool Set(const std::string &key, const std::string &value)
     {
         SetRequest request;
@@ -55,32 +71,23 @@ public:
         request.set_value(value);
 
         SetResponse response;
-        ClientContext context;
-
+        grpc::ClientContext context;
         Status status = stub_->Set(&context, request, &response);
-
         if (status.ok())
-        {
             return response.success();
-        }
-        else
-        {
-            std::cout << "RPC failed: " << status.error_message() << std::endl;
-            return false;
-        }
+
+        std::cout << "Set failed: " << status.error_message() << std::endl;
+        return false;
     }
 
-    // Sends a Get RPC. Returns true and populates value_out if the key exists.
     bool Get(const std::string &key, std::string &value_out)
     {
         GetRequest request;
         request.set_key(key);
 
         GetResponse response;
-        ClientContext context;
-
+        grpc::ClientContext context;
         Status status = stub_->Get(&context, request, &response);
-
         if (status.ok())
         {
             if (response.found())
@@ -90,22 +97,24 @@ public:
             }
             return false;
         }
-        else
-        {
-            std::cout << "RPC failed: " << status.error_message() << std::endl;
-            return false;
-        }
+
+        std::cout << "Get failed: " << status.error_message() << std::endl;
+        return false;
     }
 };
 
 int main(int argc, char **argv)
 {
     TlsConfig tls_config;
-    std::string address = "localhost:50051";
+    std::vector<std::string> addresses = {"localhost:50051"};
     for (int i = 1; i < argc; ++i)
     {
         if (std::string(argv[i]) == "--address" && i + 1 < argc)
-            address = argv[++i];
+            addresses = {argv[++i]};
+        else if (std::string(argv[i]) == "--leader" && i + 1 < argc)
+            addresses = {argv[++i]};
+        else if (std::string(argv[i]) == "--fallback" && i + 1 < argc)
+            addresses.push_back(argv[++i]);
         else if (std::string(argv[i]) == "--ca" && i + 1 < argc)
             tls_config.ca_file = argv[++i];
         else if (std::string(argv[i]) == "--cert" && i + 1 < argc)
@@ -127,7 +136,28 @@ int main(int argc, char **argv)
     {
         credentials = grpc::InsecureChannelCredentials();
     }
-    KVStoreClient client(grpc::CreateChannel(address, credentials));
+
+    std::shared_ptr<grpc::Channel> channel;
+    for (const std::string &address : addresses)
+    {
+        try
+        {
+            channel = grpc::CreateChannel(address, credentials);
+            break;
+        }
+        catch (const std::exception &ex)
+        {
+            std::cout << "Failed to open channel to " << address << ": " << ex.what() << std::endl;
+        }
+    }
+
+    if (!channel)
+    {
+        std::cerr << "Could not create a valid gRPC channel to any configured endpoint." << std::endl;
+        return 1;
+    }
+
+    KVStoreClient client(channel);
 
     // Basic smoke test: write a key, read it back, and confirm a missing
     // key correctly reports "not found".

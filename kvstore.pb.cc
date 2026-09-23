@@ -125,6 +125,34 @@ struct ListKeysResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 ListKeysResponseDefaultTypeInternal _ListKeysResponse_default_instance_;
+PROTOBUF_CONSTEXPR ClusterStatusRequest::ClusterStatusRequest(
+    ::_pbi::ConstantInitialized) {}
+struct ClusterStatusRequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR ClusterStatusRequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~ClusterStatusRequestDefaultTypeInternal() {}
+  union {
+    ClusterStatusRequest _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 ClusterStatusRequestDefaultTypeInternal _ClusterStatusRequest_default_instance_;
+PROTOBUF_CONSTEXPR ClusterStatusResponse::ClusterStatusResponse(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.node_id_)*/0
+  , /*decltype(_impl_.leader_id_)*/0
+  , /*decltype(_impl_.current_term_)*/0
+  , /*decltype(_impl_.commit_index_)*/0
+  , /*decltype(_impl_.is_leader_)*/false
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct ClusterStatusResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR ClusterStatusResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~ClusterStatusResponseDefaultTypeInternal() {}
+  union {
+    ClusterStatusResponse _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 ClusterStatusResponseDefaultTypeInternal _ClusterStatusResponse_default_instance_;
 PROTOBUF_CONSTEXPR HeartbeatRequest::HeartbeatRequest(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.leader_port_)*/0
@@ -229,7 +257,7 @@ struct AppendEntriesResponseDefaultTypeInternal {
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AppendEntriesResponseDefaultTypeInternal _AppendEntriesResponse_default_instance_;
 }  // namespace kvstore
-static ::_pb::Metadata file_level_metadata_kvstore_2eproto[15];
+static ::_pb::Metadata file_level_metadata_kvstore_2eproto[17];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_kvstore_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_kvstore_2eproto = nullptr;
 
@@ -291,6 +319,23 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::kvstore::ListKeysResponse, _impl_.keys_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::kvstore::ClusterStatusRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::kvstore::ClusterStatusResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::kvstore::ClusterStatusResponse, _impl_.node_id_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::ClusterStatusResponse, _impl_.leader_id_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::ClusterStatusResponse, _impl_.current_term_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::ClusterStatusResponse, _impl_.commit_index_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::ClusterStatusResponse, _impl_.is_leader_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::kvstore::HeartbeatRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -362,13 +407,15 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 37, -1, -1, sizeof(::kvstore::DeleteResponse)},
   { 44, -1, -1, sizeof(::kvstore::ListKeysRequest)},
   { 50, -1, -1, sizeof(::kvstore::ListKeysResponse)},
-  { 57, -1, -1, sizeof(::kvstore::HeartbeatRequest)},
-  { 65, -1, -1, sizeof(::kvstore::HeartbeatResponse)},
-  { 72, -1, -1, sizeof(::kvstore::VoteRequest)},
-  { 80, -1, -1, sizeof(::kvstore::VoteResponse)},
-  { 88, -1, -1, sizeof(::kvstore::LogEntry)},
-  { 97, -1, -1, sizeof(::kvstore::AppendEntriesRequest)},
-  { 109, -1, -1, sizeof(::kvstore::AppendEntriesResponse)},
+  { 57, -1, -1, sizeof(::kvstore::ClusterStatusRequest)},
+  { 63, -1, -1, sizeof(::kvstore::ClusterStatusResponse)},
+  { 74, -1, -1, sizeof(::kvstore::HeartbeatRequest)},
+  { 82, -1, -1, sizeof(::kvstore::HeartbeatResponse)},
+  { 89, -1, -1, sizeof(::kvstore::VoteRequest)},
+  { 97, -1, -1, sizeof(::kvstore::VoteResponse)},
+  { 105, -1, -1, sizeof(::kvstore::LogEntry)},
+  { 114, -1, -1, sizeof(::kvstore::AppendEntriesRequest)},
+  { 126, -1, -1, sizeof(::kvstore::AppendEntriesResponse)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -380,6 +427,8 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::kvstore::_DeleteResponse_default_instance_._instance,
   &::kvstore::_ListKeysRequest_default_instance_._instance,
   &::kvstore::_ListKeysResponse_default_instance_._instance,
+  &::kvstore::_ClusterStatusRequest_default_instance_._instance,
+  &::kvstore::_ClusterStatusResponse_default_instance_._instance,
   &::kvstore::_HeartbeatRequest_default_instance_._instance,
   &::kvstore::_HeartbeatResponse_default_instance_._instance,
   &::kvstore::_VoteRequest_default_instance_._instance,
@@ -397,38 +446,44 @@ const char descriptor_table_protodef_kvstore_2eproto[] PROTOBUF_SECTION_VARIABLE
   "cess\030\001 \001(\010\"\034\n\rDeleteRequest\022\013\n\003key\030\001 \001(\t"
   "\"!\n\016DeleteResponse\022\017\n\007success\030\001 \001(\010\"\021\n\017L"
   "istKeysRequest\" \n\020ListKeysResponse\022\014\n\004ke"
-  "ys\030\001 \003(\t\"<\n\020HeartbeatRequest\022\023\n\013leader_p"
-  "ort\030\001 \001(\005\022\023\n\013leader_term\030\002 \001(\005\"\"\n\021Heartb"
-  "eatResponse\022\r\n\005alive\030\001 \001(\010\";\n\013VoteReques"
-  "t\022\026\n\016candidate_term\030\001 \001(\005\022\024\n\014candidate_i"
-  "d\030\002 \001(\005\"8\n\014VoteResponse\022\024\n\014vote_granted\030"
-  "\001 \001(\010\022\022\n\nvoter_term\030\002 \001(\005\"4\n\010LogEntry\022\014\n"
-  "\004term\030\001 \001(\005\022\013\n\003key\030\002 \001(\t\022\r\n\005value\030\003 \001(\t\""
-  "\250\001\n\024AppendEntriesRequest\022\023\n\013leader_term\030"
-  "\001 \001(\005\022\021\n\tleader_id\030\002 \001(\005\022\026\n\016prev_log_ind"
-  "ex\030\003 \001(\005\022\025\n\rprev_log_term\030\004 \001(\005\022\"\n\007entri"
-  "es\030\005 \003(\0132\021.kvstore.LogEntry\022\025\n\rleader_co"
-  "mmit\030\006 \001(\005\"K\n\025AppendEntriesResponse\022\014\n\004t"
-  "erm\030\001 \001(\005\022\017\n\007success\030\002 \001(\010\022\023\n\013match_inde"
-  "x\030\003 \001(\0052\361\003\n\007KVStore\0220\n\003Get\022\023.kvstore.Get"
-  "Request\032\024.kvstore.GetResponse\0220\n\003Set\022\023.k"
-  "vstore.SetRequest\032\024.kvstore.SetResponse\022"
-  "9\n\006Delete\022\026.kvstore.DeleteRequest\032\027.kvst"
-  "ore.DeleteResponse\022\?\n\010ListKeys\022\030.kvstore"
-  ".ListKeysRequest\032\031.kvstore.ListKeysRespo"
-  "nse\0226\n\tReplicate\022\023.kvstore.SetRequest\032\024."
-  "kvstore.SetResponse\022B\n\tHeartbeat\022\031.kvsto"
-  "re.HeartbeatRequest\032\032.kvstore.HeartbeatR"
-  "esponse\022:\n\013RequestVote\022\024.kvstore.VoteReq"
-  "uest\032\025.kvstore.VoteResponse\022N\n\rAppendEnt"
-  "ries\022\035.kvstore.AppendEntriesRequest\032\036.kv"
-  "store.AppendEntriesResponseb\006proto3"
+  "ys\030\001 \003(\t\"\026\n\024ClusterStatusRequest\"z\n\025Clus"
+  "terStatusResponse\022\017\n\007node_id\030\001 \001(\005\022\021\n\tle"
+  "ader_id\030\002 \001(\005\022\024\n\014current_term\030\003 \001(\005\022\024\n\014c"
+  "ommit_index\030\004 \001(\005\022\021\n\tis_leader\030\005 \001(\010\"<\n\020"
+  "HeartbeatRequest\022\023\n\013leader_port\030\001 \001(\005\022\023\n"
+  "\013leader_term\030\002 \001(\005\"\"\n\021HeartbeatResponse\022"
+  "\r\n\005alive\030\001 \001(\010\";\n\013VoteRequest\022\026\n\016candida"
+  "te_term\030\001 \001(\005\022\024\n\014candidate_id\030\002 \001(\005\"8\n\014V"
+  "oteResponse\022\024\n\014vote_granted\030\001 \001(\010\022\022\n\nvot"
+  "er_term\030\002 \001(\005\"4\n\010LogEntry\022\014\n\004term\030\001 \001(\005\022"
+  "\013\n\003key\030\002 \001(\t\022\r\n\005value\030\003 \001(\t\"\250\001\n\024AppendEn"
+  "triesRequest\022\023\n\013leader_term\030\001 \001(\005\022\021\n\tlea"
+  "der_id\030\002 \001(\005\022\026\n\016prev_log_index\030\003 \001(\005\022\025\n\r"
+  "prev_log_term\030\004 \001(\005\022\"\n\007entries\030\005 \003(\0132\021.k"
+  "vstore.LogEntry\022\025\n\rleader_commit\030\006 \001(\005\"K"
+  "\n\025AppendEntriesResponse\022\014\n\004term\030\001 \001(\005\022\017\n"
+  "\007success\030\002 \001(\010\022\023\n\013match_index\030\003 \001(\0052\304\004\n\007"
+  "KVStore\0220\n\003Get\022\023.kvstore.GetRequest\032\024.kv"
+  "store.GetResponse\0220\n\003Set\022\023.kvstore.SetRe"
+  "quest\032\024.kvstore.SetResponse\0229\n\006Delete\022\026."
+  "kvstore.DeleteRequest\032\027.kvstore.DeleteRe"
+  "sponse\022\?\n\010ListKeys\022\030.kvstore.ListKeysReq"
+  "uest\032\031.kvstore.ListKeysResponse\022Q\n\020GetCl"
+  "usterStatus\022\035.kvstore.ClusterStatusReque"
+  "st\032\036.kvstore.ClusterStatusResponse\0226\n\tRe"
+  "plicate\022\023.kvstore.SetRequest\032\024.kvstore.S"
+  "etResponse\022B\n\tHeartbeat\022\031.kvstore.Heartb"
+  "eatRequest\032\032.kvstore.HeartbeatResponse\022:"
+  "\n\013RequestVote\022\024.kvstore.VoteRequest\032\025.kv"
+  "store.VoteResponse\022N\n\rAppendEntries\022\035.kv"
+  "store.AppendEntriesRequest\032\036.kvstore.App"
+  "endEntriesResponseb\006proto3"
   ;
 static ::_pbi::once_flag descriptor_table_kvstore_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_kvstore_2eproto = {
-    false, false, 1315, descriptor_table_protodef_kvstore_2eproto,
+    false, false, 1546, descriptor_table_protodef_kvstore_2eproto,
     "kvstore.proto",
-    &descriptor_table_kvstore_2eproto_once, nullptr, 0, 15,
+    &descriptor_table_kvstore_2eproto_once, nullptr, 0, 17,
     schemas, file_default_instances, TableStruct_kvstore_2eproto::offsets,
     file_level_metadata_kvstore_2eproto, file_level_enum_descriptors_kvstore_2eproto,
     file_level_service_descriptors_kvstore_2eproto,
@@ -1918,6 +1973,329 @@ void ListKeysResponse::InternalSwap(ListKeysResponse* other) {
 
 // ===================================================================
 
+class ClusterStatusRequest::_Internal {
+ public:
+};
+
+ClusterStatusRequest::ClusterStatusRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+  // @@protoc_insertion_point(arena_constructor:kvstore.ClusterStatusRequest)
+}
+ClusterStatusRequest::ClusterStatusRequest(const ClusterStatusRequest& from)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
+  ClusterStatusRequest* const _this = this; (void)_this;
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  // @@protoc_insertion_point(copy_constructor:kvstore.ClusterStatusRequest)
+}
+
+
+
+
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData ClusterStatusRequest::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*ClusterStatusRequest::GetClassData() const { return &_class_data_; }
+
+
+
+
+
+
+
+::PROTOBUF_NAMESPACE_ID::Metadata ClusterStatusRequest::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
+      file_level_metadata_kvstore_2eproto[8]);
+}
+
+// ===================================================================
+
+class ClusterStatusResponse::_Internal {
+ public:
+};
+
+ClusterStatusResponse::ClusterStatusResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:kvstore.ClusterStatusResponse)
+}
+ClusterStatusResponse::ClusterStatusResponse(const ClusterStatusResponse& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  ClusterStatusResponse* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.node_id_){}
+    , decltype(_impl_.leader_id_){}
+    , decltype(_impl_.current_term_){}
+    , decltype(_impl_.commit_index_){}
+    , decltype(_impl_.is_leader_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::memcpy(&_impl_.node_id_, &from._impl_.node_id_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.is_leader_) -
+    reinterpret_cast<char*>(&_impl_.node_id_)) + sizeof(_impl_.is_leader_));
+  // @@protoc_insertion_point(copy_constructor:kvstore.ClusterStatusResponse)
+}
+
+inline void ClusterStatusResponse::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.node_id_){0}
+    , decltype(_impl_.leader_id_){0}
+    , decltype(_impl_.current_term_){0}
+    , decltype(_impl_.commit_index_){0}
+    , decltype(_impl_.is_leader_){false}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+}
+
+ClusterStatusResponse::~ClusterStatusResponse() {
+  // @@protoc_insertion_point(destructor:kvstore.ClusterStatusResponse)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void ClusterStatusResponse::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+}
+
+void ClusterStatusResponse::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void ClusterStatusResponse::Clear() {
+// @@protoc_insertion_point(message_clear_start:kvstore.ClusterStatusResponse)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  ::memset(&_impl_.node_id_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.is_leader_) -
+      reinterpret_cast<char*>(&_impl_.node_id_)) + sizeof(_impl_.is_leader_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* ClusterStatusResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // int32 node_id = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.node_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 leader_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.leader_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 current_term = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _impl_.current_term_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 commit_index = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.commit_index_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool is_leader = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.is_leader_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* ClusterStatusResponse::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:kvstore.ClusterStatusResponse)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // int32 node_id = 1;
+  if (this->_internal_node_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(1, this->_internal_node_id(), target);
+  }
+
+  // int32 leader_id = 2;
+  if (this->_internal_leader_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(2, this->_internal_leader_id(), target);
+  }
+
+  // int32 current_term = 3;
+  if (this->_internal_current_term() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(3, this->_internal_current_term(), target);
+  }
+
+  // int32 commit_index = 4;
+  if (this->_internal_commit_index() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(4, this->_internal_commit_index(), target);
+  }
+
+  // bool is_leader = 5;
+  if (this->_internal_is_leader() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(5, this->_internal_is_leader(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:kvstore.ClusterStatusResponse)
+  return target;
+}
+
+size_t ClusterStatusResponse::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:kvstore.ClusterStatusResponse)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // int32 node_id = 1;
+  if (this->_internal_node_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_node_id());
+  }
+
+  // int32 leader_id = 2;
+  if (this->_internal_leader_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_leader_id());
+  }
+
+  // int32 current_term = 3;
+  if (this->_internal_current_term() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_current_term());
+  }
+
+  // int32 commit_index = 4;
+  if (this->_internal_commit_index() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_commit_index());
+  }
+
+  // bool is_leader = 5;
+  if (this->_internal_is_leader() != 0) {
+    total_size += 1 + 1;
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData ClusterStatusResponse::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    ClusterStatusResponse::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*ClusterStatusResponse::GetClassData() const { return &_class_data_; }
+
+
+void ClusterStatusResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<ClusterStatusResponse*>(&to_msg);
+  auto& from = static_cast<const ClusterStatusResponse&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:kvstore.ClusterStatusResponse)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from._internal_node_id() != 0) {
+    _this->_internal_set_node_id(from._internal_node_id());
+  }
+  if (from._internal_leader_id() != 0) {
+    _this->_internal_set_leader_id(from._internal_leader_id());
+  }
+  if (from._internal_current_term() != 0) {
+    _this->_internal_set_current_term(from._internal_current_term());
+  }
+  if (from._internal_commit_index() != 0) {
+    _this->_internal_set_commit_index(from._internal_commit_index());
+  }
+  if (from._internal_is_leader() != 0) {
+    _this->_internal_set_is_leader(from._internal_is_leader());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void ClusterStatusResponse::CopyFrom(const ClusterStatusResponse& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:kvstore.ClusterStatusResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool ClusterStatusResponse::IsInitialized() const {
+  return true;
+}
+
+void ClusterStatusResponse::InternalSwap(ClusterStatusResponse* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(ClusterStatusResponse, _impl_.is_leader_)
+      + sizeof(ClusterStatusResponse::_impl_.is_leader_)
+      - PROTOBUF_FIELD_OFFSET(ClusterStatusResponse, _impl_.node_id_)>(
+          reinterpret_cast<char*>(&_impl_.node_id_),
+          reinterpret_cast<char*>(&other->_impl_.node_id_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata ClusterStatusResponse::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
+      file_level_metadata_kvstore_2eproto[9]);
+}
+
+// ===================================================================
+
 class HeartbeatRequest::_Internal {
  public:
 };
@@ -2124,7 +2502,7 @@ void HeartbeatRequest::InternalSwap(HeartbeatRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata HeartbeatRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
-      file_level_metadata_kvstore_2eproto[8]);
+      file_level_metadata_kvstore_2eproto[10]);
 }
 
 // ===================================================================
@@ -2302,7 +2680,7 @@ void HeartbeatResponse::InternalSwap(HeartbeatResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata HeartbeatResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
-      file_level_metadata_kvstore_2eproto[9]);
+      file_level_metadata_kvstore_2eproto[11]);
 }
 
 // ===================================================================
@@ -2513,7 +2891,7 @@ void VoteRequest::InternalSwap(VoteRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata VoteRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
-      file_level_metadata_kvstore_2eproto[10]);
+      file_level_metadata_kvstore_2eproto[12]);
 }
 
 // ===================================================================
@@ -2724,7 +3102,7 @@ void VoteResponse::InternalSwap(VoteResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata VoteResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
-      file_level_metadata_kvstore_2eproto[11]);
+      file_level_metadata_kvstore_2eproto[13]);
 }
 
 // ===================================================================
@@ -3004,7 +3382,7 @@ void LogEntry::InternalSwap(LogEntry* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata LogEntry::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
-      file_level_metadata_kvstore_2eproto[12]);
+      file_level_metadata_kvstore_2eproto[14]);
 }
 
 // ===================================================================
@@ -3321,7 +3699,7 @@ void AppendEntriesRequest::InternalSwap(AppendEntriesRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AppendEntriesRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
-      file_level_metadata_kvstore_2eproto[13]);
+      file_level_metadata_kvstore_2eproto[15]);
 }
 
 // ===================================================================
@@ -3556,7 +3934,7 @@ void AppendEntriesResponse::InternalSwap(AppendEntriesResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AppendEntriesResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvstore_2eproto_getter, &descriptor_table_kvstore_2eproto_once,
-      file_level_metadata_kvstore_2eproto[14]);
+      file_level_metadata_kvstore_2eproto[16]);
 }
 
 // @@protoc_insertion_point(namespace_scope)
@@ -3593,6 +3971,14 @@ Arena::CreateMaybeMessage< ::kvstore::ListKeysRequest >(Arena* arena) {
 template<> PROTOBUF_NOINLINE ::kvstore::ListKeysResponse*
 Arena::CreateMaybeMessage< ::kvstore::ListKeysResponse >(Arena* arena) {
   return Arena::CreateMessageInternal< ::kvstore::ListKeysResponse >(arena);
+}
+template<> PROTOBUF_NOINLINE ::kvstore::ClusterStatusRequest*
+Arena::CreateMaybeMessage< ::kvstore::ClusterStatusRequest >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::kvstore::ClusterStatusRequest >(arena);
+}
+template<> PROTOBUF_NOINLINE ::kvstore::ClusterStatusResponse*
+Arena::CreateMaybeMessage< ::kvstore::ClusterStatusResponse >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::kvstore::ClusterStatusResponse >(arena);
 }
 template<> PROTOBUF_NOINLINE ::kvstore::HeartbeatRequest*
 Arena::CreateMaybeMessage< ::kvstore::HeartbeatRequest >(Arena* arena) {

@@ -52,6 +52,12 @@ extern AppendEntriesRequestDefaultTypeInternal _AppendEntriesRequest_default_ins
 class AppendEntriesResponse;
 struct AppendEntriesResponseDefaultTypeInternal;
 extern AppendEntriesResponseDefaultTypeInternal _AppendEntriesResponse_default_instance_;
+class ClusterStatusRequest;
+struct ClusterStatusRequestDefaultTypeInternal;
+extern ClusterStatusRequestDefaultTypeInternal _ClusterStatusRequest_default_instance_;
+class ClusterStatusResponse;
+struct ClusterStatusResponseDefaultTypeInternal;
+extern ClusterStatusResponseDefaultTypeInternal _ClusterStatusResponse_default_instance_;
 class DeleteRequest;
 struct DeleteRequestDefaultTypeInternal;
 extern DeleteRequestDefaultTypeInternal _DeleteRequest_default_instance_;
@@ -95,6 +101,8 @@ extern VoteResponseDefaultTypeInternal _VoteResponse_default_instance_;
 PROTOBUF_NAMESPACE_OPEN
 template<> ::kvstore::AppendEntriesRequest* Arena::CreateMaybeMessage<::kvstore::AppendEntriesRequest>(Arena*);
 template<> ::kvstore::AppendEntriesResponse* Arena::CreateMaybeMessage<::kvstore::AppendEntriesResponse>(Arena*);
+template<> ::kvstore::ClusterStatusRequest* Arena::CreateMaybeMessage<::kvstore::ClusterStatusRequest>(Arena*);
+template<> ::kvstore::ClusterStatusResponse* Arena::CreateMaybeMessage<::kvstore::ClusterStatusResponse>(Arena*);
 template<> ::kvstore::DeleteRequest* Arena::CreateMaybeMessage<::kvstore::DeleteRequest>(Arena*);
 template<> ::kvstore::DeleteResponse* Arena::CreateMaybeMessage<::kvstore::DeleteResponse>(Arena*);
 template<> ::kvstore::GetRequest* Arena::CreateMaybeMessage<::kvstore::GetRequest>(Arena*);
@@ -1329,6 +1337,316 @@ class ListKeysResponse final :
 };
 // -------------------------------------------------------------------
 
+class ClusterStatusRequest final :
+    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:kvstore.ClusterStatusRequest) */ {
+ public:
+  inline ClusterStatusRequest() : ClusterStatusRequest(nullptr) {}
+  explicit PROTOBUF_CONSTEXPR ClusterStatusRequest(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  ClusterStatusRequest(const ClusterStatusRequest& from);
+  ClusterStatusRequest(ClusterStatusRequest&& from) noexcept
+    : ClusterStatusRequest() {
+    *this = ::std::move(from);
+  }
+
+  inline ClusterStatusRequest& operator=(const ClusterStatusRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ClusterStatusRequest& operator=(ClusterStatusRequest&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ClusterStatusRequest& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const ClusterStatusRequest* internal_default_instance() {
+    return reinterpret_cast<const ClusterStatusRequest*>(
+               &_ClusterStatusRequest_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    8;
+
+  friend void swap(ClusterStatusRequest& a, ClusterStatusRequest& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(ClusterStatusRequest* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ClusterStatusRequest* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ClusterStatusRequest* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<ClusterStatusRequest>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
+  inline void CopyFrom(const ClusterStatusRequest& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
+  void MergeFrom(const ClusterStatusRequest& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
+  }
+  public:
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "kvstore.ClusterStatusRequest";
+  }
+  protected:
+  explicit ClusterStatusRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // @@protoc_insertion_point(class_scope:kvstore.ClusterStatusRequest)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+  };
+  friend struct ::TableStruct_kvstore_2eproto;
+};
+// -------------------------------------------------------------------
+
+class ClusterStatusResponse final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:kvstore.ClusterStatusResponse) */ {
+ public:
+  inline ClusterStatusResponse() : ClusterStatusResponse(nullptr) {}
+  ~ClusterStatusResponse() override;
+  explicit PROTOBUF_CONSTEXPR ClusterStatusResponse(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  ClusterStatusResponse(const ClusterStatusResponse& from);
+  ClusterStatusResponse(ClusterStatusResponse&& from) noexcept
+    : ClusterStatusResponse() {
+    *this = ::std::move(from);
+  }
+
+  inline ClusterStatusResponse& operator=(const ClusterStatusResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ClusterStatusResponse& operator=(ClusterStatusResponse&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ClusterStatusResponse& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const ClusterStatusResponse* internal_default_instance() {
+    return reinterpret_cast<const ClusterStatusResponse*>(
+               &_ClusterStatusResponse_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    9;
+
+  friend void swap(ClusterStatusResponse& a, ClusterStatusResponse& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(ClusterStatusResponse* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ClusterStatusResponse* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ClusterStatusResponse* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<ClusterStatusResponse>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const ClusterStatusResponse& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const ClusterStatusResponse& from) {
+    ClusterStatusResponse::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(ClusterStatusResponse* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "kvstore.ClusterStatusResponse";
+  }
+  protected:
+  explicit ClusterStatusResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kNodeIdFieldNumber = 1,
+    kLeaderIdFieldNumber = 2,
+    kCurrentTermFieldNumber = 3,
+    kCommitIndexFieldNumber = 4,
+    kIsLeaderFieldNumber = 5,
+  };
+  // int32 node_id = 1;
+  void clear_node_id();
+  int32_t node_id() const;
+  void set_node_id(int32_t value);
+  private:
+  int32_t _internal_node_id() const;
+  void _internal_set_node_id(int32_t value);
+  public:
+
+  // int32 leader_id = 2;
+  void clear_leader_id();
+  int32_t leader_id() const;
+  void set_leader_id(int32_t value);
+  private:
+  int32_t _internal_leader_id() const;
+  void _internal_set_leader_id(int32_t value);
+  public:
+
+  // int32 current_term = 3;
+  void clear_current_term();
+  int32_t current_term() const;
+  void set_current_term(int32_t value);
+  private:
+  int32_t _internal_current_term() const;
+  void _internal_set_current_term(int32_t value);
+  public:
+
+  // int32 commit_index = 4;
+  void clear_commit_index();
+  int32_t commit_index() const;
+  void set_commit_index(int32_t value);
+  private:
+  int32_t _internal_commit_index() const;
+  void _internal_set_commit_index(int32_t value);
+  public:
+
+  // bool is_leader = 5;
+  void clear_is_leader();
+  bool is_leader() const;
+  void set_is_leader(bool value);
+  private:
+  bool _internal_is_leader() const;
+  void _internal_set_is_leader(bool value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:kvstore.ClusterStatusResponse)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    int32_t node_id_;
+    int32_t leader_id_;
+    int32_t current_term_;
+    int32_t commit_index_;
+    bool is_leader_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_kvstore_2eproto;
+};
+// -------------------------------------------------------------------
+
 class HeartbeatRequest final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:kvstore.HeartbeatRequest) */ {
  public:
@@ -1377,7 +1695,7 @@ class HeartbeatRequest final :
                &_HeartbeatRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    8;
+    10;
 
   friend void swap(HeartbeatRequest& a, HeartbeatRequest& b) {
     a.Swap(&b);
@@ -1536,7 +1854,7 @@ class HeartbeatResponse final :
                &_HeartbeatResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    9;
+    11;
 
   friend void swap(HeartbeatResponse& a, HeartbeatResponse& b) {
     a.Swap(&b);
@@ -1684,7 +2002,7 @@ class VoteRequest final :
                &_VoteRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    10;
+    12;
 
   friend void swap(VoteRequest& a, VoteRequest& b) {
     a.Swap(&b);
@@ -1843,7 +2161,7 @@ class VoteResponse final :
                &_VoteResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    11;
+    13;
 
   friend void swap(VoteResponse& a, VoteResponse& b) {
     a.Swap(&b);
@@ -2002,7 +2320,7 @@ class LogEntry final :
                &_LogEntry_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    12;
+    14;
 
   friend void swap(LogEntry& a, LogEntry& b) {
     a.Swap(&b);
@@ -2182,7 +2500,7 @@ class AppendEntriesRequest final :
                &_AppendEntriesRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    13;
+    15;
 
   friend void swap(AppendEntriesRequest& a, AppendEntriesRequest& b) {
     a.Swap(&b);
@@ -2394,7 +2712,7 @@ class AppendEntriesResponse final :
                &_AppendEntriesResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    14;
+    16;
 
   friend void swap(AppendEntriesResponse& a, AppendEntriesResponse& b) {
     a.Swap(&b);
@@ -2940,6 +3258,114 @@ ListKeysResponse::mutable_keys() {
 
 // -------------------------------------------------------------------
 
+// ClusterStatusRequest
+
+// -------------------------------------------------------------------
+
+// ClusterStatusResponse
+
+// int32 node_id = 1;
+inline void ClusterStatusResponse::clear_node_id() {
+  _impl_.node_id_ = 0;
+}
+inline int32_t ClusterStatusResponse::_internal_node_id() const {
+  return _impl_.node_id_;
+}
+inline int32_t ClusterStatusResponse::node_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.ClusterStatusResponse.node_id)
+  return _internal_node_id();
+}
+inline void ClusterStatusResponse::_internal_set_node_id(int32_t value) {
+
+  _impl_.node_id_ = value;
+}
+inline void ClusterStatusResponse::set_node_id(int32_t value) {
+  _internal_set_node_id(value);
+  // @@protoc_insertion_point(field_set:kvstore.ClusterStatusResponse.node_id)
+}
+
+// int32 leader_id = 2;
+inline void ClusterStatusResponse::clear_leader_id() {
+  _impl_.leader_id_ = 0;
+}
+inline int32_t ClusterStatusResponse::_internal_leader_id() const {
+  return _impl_.leader_id_;
+}
+inline int32_t ClusterStatusResponse::leader_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.ClusterStatusResponse.leader_id)
+  return _internal_leader_id();
+}
+inline void ClusterStatusResponse::_internal_set_leader_id(int32_t value) {
+
+  _impl_.leader_id_ = value;
+}
+inline void ClusterStatusResponse::set_leader_id(int32_t value) {
+  _internal_set_leader_id(value);
+  // @@protoc_insertion_point(field_set:kvstore.ClusterStatusResponse.leader_id)
+}
+
+// int32 current_term = 3;
+inline void ClusterStatusResponse::clear_current_term() {
+  _impl_.current_term_ = 0;
+}
+inline int32_t ClusterStatusResponse::_internal_current_term() const {
+  return _impl_.current_term_;
+}
+inline int32_t ClusterStatusResponse::current_term() const {
+  // @@protoc_insertion_point(field_get:kvstore.ClusterStatusResponse.current_term)
+  return _internal_current_term();
+}
+inline void ClusterStatusResponse::_internal_set_current_term(int32_t value) {
+
+  _impl_.current_term_ = value;
+}
+inline void ClusterStatusResponse::set_current_term(int32_t value) {
+  _internal_set_current_term(value);
+  // @@protoc_insertion_point(field_set:kvstore.ClusterStatusResponse.current_term)
+}
+
+// int32 commit_index = 4;
+inline void ClusterStatusResponse::clear_commit_index() {
+  _impl_.commit_index_ = 0;
+}
+inline int32_t ClusterStatusResponse::_internal_commit_index() const {
+  return _impl_.commit_index_;
+}
+inline int32_t ClusterStatusResponse::commit_index() const {
+  // @@protoc_insertion_point(field_get:kvstore.ClusterStatusResponse.commit_index)
+  return _internal_commit_index();
+}
+inline void ClusterStatusResponse::_internal_set_commit_index(int32_t value) {
+
+  _impl_.commit_index_ = value;
+}
+inline void ClusterStatusResponse::set_commit_index(int32_t value) {
+  _internal_set_commit_index(value);
+  // @@protoc_insertion_point(field_set:kvstore.ClusterStatusResponse.commit_index)
+}
+
+// bool is_leader = 5;
+inline void ClusterStatusResponse::clear_is_leader() {
+  _impl_.is_leader_ = false;
+}
+inline bool ClusterStatusResponse::_internal_is_leader() const {
+  return _impl_.is_leader_;
+}
+inline bool ClusterStatusResponse::is_leader() const {
+  // @@protoc_insertion_point(field_get:kvstore.ClusterStatusResponse.is_leader)
+  return _internal_is_leader();
+}
+inline void ClusterStatusResponse::_internal_set_is_leader(bool value) {
+
+  _impl_.is_leader_ = value;
+}
+inline void ClusterStatusResponse::set_is_leader(bool value) {
+  _internal_set_is_leader(value);
+  // @@protoc_insertion_point(field_set:kvstore.ClusterStatusResponse.is_leader)
+}
+
+// -------------------------------------------------------------------
+
 // HeartbeatRequest
 
 // int32 leader_port = 1;
@@ -3429,6 +3855,10 @@ inline void AppendEntriesResponse::set_match_index(int32_t value) {
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

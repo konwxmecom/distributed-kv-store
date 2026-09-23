@@ -26,6 +26,7 @@ static const char* KVStore_method_names[] = {
   "/kvstore.KVStore/Set",
   "/kvstore.KVStore/Delete",
   "/kvstore.KVStore/ListKeys",
+  "/kvstore.KVStore/GetClusterStatus",
   "/kvstore.KVStore/Replicate",
   "/kvstore.KVStore/Heartbeat",
   "/kvstore.KVStore/RequestVote",
@@ -43,10 +44,11 @@ KVStore::Stub::Stub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, c
   , rpcmethod_Set_(KVStore_method_names[1], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
   , rpcmethod_Delete_(KVStore_method_names[2], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
   , rpcmethod_ListKeys_(KVStore_method_names[3], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
-  , rpcmethod_Replicate_(KVStore_method_names[4], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
-  , rpcmethod_Heartbeat_(KVStore_method_names[5], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
-  , rpcmethod_RequestVote_(KVStore_method_names[6], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
-  , rpcmethod_AppendEntries_(KVStore_method_names[7], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
+  , rpcmethod_GetClusterStatus_(KVStore_method_names[4], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
+  , rpcmethod_Replicate_(KVStore_method_names[5], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
+  , rpcmethod_Heartbeat_(KVStore_method_names[6], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
+  , rpcmethod_RequestVote_(KVStore_method_names[7], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
+  , rpcmethod_AppendEntries_(KVStore_method_names[8], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
   {}
 
 ::grpc::Status KVStore::Stub::Get(::grpc::ClientContext* context, const ::kvstore::GetRequest& request, ::kvstore::GetResponse* response) {
@@ -137,6 +139,29 @@ void KVStore::Stub::async::ListKeys(::grpc::ClientContext* context, const ::kvst
 ::grpc::ClientAsyncResponseReader< ::kvstore::ListKeysResponse>* KVStore::Stub::AsyncListKeysRaw(::grpc::ClientContext* context, const ::kvstore::ListKeysRequest& request, ::grpc::CompletionQueue* cq) {
   auto* result =
     this->PrepareAsyncListKeysRaw(context, request, cq);
+  result->StartCall();
+  return result;
+}
+
+::grpc::Status KVStore::Stub::GetClusterStatus(::grpc::ClientContext* context, const ::kvstore::ClusterStatusRequest& request, ::kvstore::ClusterStatusResponse* response) {
+  return ::grpc::internal::BlockingUnaryCall< ::kvstore::ClusterStatusRequest, ::kvstore::ClusterStatusResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_GetClusterStatus_, context, request, response);
+}
+
+void KVStore::Stub::async::GetClusterStatus(::grpc::ClientContext* context, const ::kvstore::ClusterStatusRequest* request, ::kvstore::ClusterStatusResponse* response, std::function<void(::grpc::Status)> f) {
+  ::grpc::internal::CallbackUnaryCall< ::kvstore::ClusterStatusRequest, ::kvstore::ClusterStatusResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_GetClusterStatus_, context, request, response, std::move(f));
+}
+
+void KVStore::Stub::async::GetClusterStatus(::grpc::ClientContext* context, const ::kvstore::ClusterStatusRequest* request, ::kvstore::ClusterStatusResponse* response, ::grpc::ClientUnaryReactor* reactor) {
+  ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_GetClusterStatus_, context, request, response, reactor);
+}
+
+::grpc::ClientAsyncResponseReader< ::kvstore::ClusterStatusResponse>* KVStore::Stub::PrepareAsyncGetClusterStatusRaw(::grpc::ClientContext* context, const ::kvstore::ClusterStatusRequest& request, ::grpc::CompletionQueue* cq) {
+  return ::grpc::internal::ClientAsyncResponseReaderHelper::Create< ::kvstore::ClusterStatusResponse, ::kvstore::ClusterStatusRequest, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), cq, rpcmethod_GetClusterStatus_, context, request);
+}
+
+::grpc::ClientAsyncResponseReader< ::kvstore::ClusterStatusResponse>* KVStore::Stub::AsyncGetClusterStatusRaw(::grpc::ClientContext* context, const ::kvstore::ClusterStatusRequest& request, ::grpc::CompletionQueue* cq) {
+  auto* result =
+    this->PrepareAsyncGetClusterStatusRaw(context, request, cq);
   result->StartCall();
   return result;
 }
@@ -277,6 +302,16 @@ KVStore::Service::Service() {
   AddMethod(new ::grpc::internal::RpcServiceMethod(
       KVStore_method_names[4],
       ::grpc::internal::RpcMethod::NORMAL_RPC,
+      new ::grpc::internal::RpcMethodHandler< KVStore::Service, ::kvstore::ClusterStatusRequest, ::kvstore::ClusterStatusResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(
+          [](KVStore::Service* service,
+             ::grpc::ServerContext* ctx,
+             const ::kvstore::ClusterStatusRequest* req,
+             ::kvstore::ClusterStatusResponse* resp) {
+               return service->GetClusterStatus(ctx, req, resp);
+             }, this)));
+  AddMethod(new ::grpc::internal::RpcServiceMethod(
+      KVStore_method_names[5],
+      ::grpc::internal::RpcMethod::NORMAL_RPC,
       new ::grpc::internal::RpcMethodHandler< KVStore::Service, ::kvstore::SetRequest, ::kvstore::SetResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(
           [](KVStore::Service* service,
              ::grpc::ServerContext* ctx,
@@ -285,7 +320,7 @@ KVStore::Service::Service() {
                return service->Replicate(ctx, req, resp);
              }, this)));
   AddMethod(new ::grpc::internal::RpcServiceMethod(
-      KVStore_method_names[5],
+      KVStore_method_names[6],
       ::grpc::internal::RpcMethod::NORMAL_RPC,
       new ::grpc::internal::RpcMethodHandler< KVStore::Service, ::kvstore::HeartbeatRequest, ::kvstore::HeartbeatResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(
           [](KVStore::Service* service,
@@ -295,7 +330,7 @@ KVStore::Service::Service() {
                return service->Heartbeat(ctx, req, resp);
              }, this)));
   AddMethod(new ::grpc::internal::RpcServiceMethod(
-      KVStore_method_names[6],
+      KVStore_method_names[7],
       ::grpc::internal::RpcMethod::NORMAL_RPC,
       new ::grpc::internal::RpcMethodHandler< KVStore::Service, ::kvstore::VoteRequest, ::kvstore::VoteResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(
           [](KVStore::Service* service,
@@ -305,7 +340,7 @@ KVStore::Service::Service() {
                return service->RequestVote(ctx, req, resp);
              }, this)));
   AddMethod(new ::grpc::internal::RpcServiceMethod(
-      KVStore_method_names[7],
+      KVStore_method_names[8],
       ::grpc::internal::RpcMethod::NORMAL_RPC,
       new ::grpc::internal::RpcMethodHandler< KVStore::Service, ::kvstore::AppendEntriesRequest, ::kvstore::AppendEntriesResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(
           [](KVStore::Service* service,
@@ -341,6 +376,13 @@ KVStore::Service::~Service() {
 }
 
 ::grpc::Status KVStore::Service::ListKeys(::grpc::ServerContext* context, const ::kvstore::ListKeysRequest* request, ::kvstore::ListKeysResponse* response) {
+  (void) context;
+  (void) request;
+  (void) response;
+  return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+}
+
+::grpc::Status KVStore::Service::GetClusterStatus(::grpc::ServerContext* context, const ::kvstore::ClusterStatusRequest* request, ::kvstore::ClusterStatusResponse* response) {
   (void) context;
   (void) request;
   (void) response;
