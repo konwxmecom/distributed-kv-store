@@ -114,10 +114,12 @@ void StopServer(pid_t pid) {
 }
 
 struct TestServer {
-    explicit TestServer(const std::string& port)
+    explicit TestServer(const std::string& port, bool reset_storage = true)
         : port(port), pid(-1) {
-        std::error_code error;
-        std::filesystem::remove_all(std::filesystem::path("data") / ("node_" + port), error);
+        if (reset_storage) {
+            std::error_code error;
+            std::filesystem::remove_all(std::filesystem::path("data") / ("node_" + port), error);
+        }
         pid = StartServer(port, {});
     }
 
@@ -240,6 +242,43 @@ TEST(RaftIntegration, ListsKeysAndReportsClusterStatus) {
     EXPECT_GE(status_resp.commit_index(), 2);
     EXPECT_TRUE(status_resp.is_leader());
 
+}
+
+TEST(RaftIntegration, RecoversCommittedValueAfterRestart) {
+    const std::string port = "18054";
+    const std::string address = "localhost:" + port;
+
+    {
+        TestServer server(port);
+        ASSERT_GT(server.pid, 0);
+        ASSERT_TRUE(WaitForServer(address));
+        ASSERT_TRUE(WaitForLeader(address));
+
+        auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::SetRequest request;
+        request.set_key("persistent-key");
+        request.set_value("persistent-value");
+        kvstore::SetResponse response;
+        grpc::ClientContext context;
+        ASSERT_TRUE(stub.Set(&context, request, &response).ok());
+        ASSERT_TRUE(response.success());
+    }
+
+    TestServer restarted(port, false);
+    ASSERT_GT(restarted.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+    kvstore::GetRequest request;
+    request.set_key("persistent-key");
+    kvstore::GetResponse response;
+    grpc::ClientContext context;
+    ASSERT_TRUE(stub.Get(&context, request, &response).ok());
+    ASSERT_TRUE(response.found());
+    EXPECT_EQ(response.value(), "persistent-value");
 }
 
 }  // namespace
