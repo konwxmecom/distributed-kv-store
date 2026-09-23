@@ -218,6 +218,7 @@ def main():
     parser = argparse.ArgumentParser(description="HTTP gateway for the Raft KVStore")
     parser.add_argument("--target", default="localhost:50051", help="gRPC node address")
     parser.add_argument("--port", type=int, default=8080, help="HTTP gateway port")
+    parser.add_argument("--host", default="0.0.0.0", help="HTTP gateway bind address")
     parser.add_argument("--ca", help="CA certificate for mTLS")
     parser.add_argument("--cert", help="client certificate for mTLS")
     parser.add_argument("--key", help="client private key for mTLS")
@@ -238,7 +239,7 @@ def main():
         channel = grpc.insecure_channel(args.target)
     GatewayHandler.pb2 = pb2
     GatewayHandler.stub = pb2_grpc.KVStoreStub(channel)
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), GatewayHandler)
+    server = ThreadingHTTPServer((args.host, args.port), GatewayHandler)
     server.target = args.target
     print(f"KV gateway listening on http://127.0.0.1:{args.port} -> {args.target}")
     try:
