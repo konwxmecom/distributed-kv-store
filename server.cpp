@@ -41,7 +41,7 @@ enum class NodeState
     LEADER
 };
 
-// Implements the KVStore gRPC service, including the underlying Raft
+// Implements the KVStore gRPC service, including the underlying Raft,
 // consensus protocol (leader election + log replication).
 class KVStoreServiceImpl final : public KVStore::Service
 {
