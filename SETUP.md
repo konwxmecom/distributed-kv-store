@@ -110,6 +110,22 @@ By default the client connects to `localhost:50051`. Point it at whichever node 
 
 This starts a fresh 3-node cluster and repeatedly kills/restarts a random node, letting you observe leader re-election and log catch-up in real time.
 
+## 10. Persistence, TLS, and Membership
+
+Nodes persist Raft data under `data\node_<port>\`. The WAL is replayed on startup and
+committed state is periodically compacted into a snapshot.
+
+Enable mutual TLS by passing the CA, certificate, and private key to each server and
+the client:
+
+```powershell
+.\build\Debug\server.exe 50051 50052 50053 --ca ca.pem --cert node-50051.pem --key node-50051-key.pem
+.\build\Debug\client.exe --address localhost:50051 --ca ca.pem --cert client.pem --key client-key.pem
+```
+
+Membership can be reloaded without restarting a node. Pass `--peers-file` and keep one
+`host:port` endpoint per line; editing the file updates the peer set automatically.
+
 ## Troubleshooting
 
 - **"cannot open source file grpcpp/grpcpp.h" in the editor** — this is just an IDE IntelliSense path issue and doesn't affect compilation via CMake; it resolves once you configure CMake Tools in your editor to point at the `build` folder.

@@ -10,6 +10,10 @@ A distributed, in-memory key-value store built from scratch in C++, implementing
 - **Automatic log catch-up** — a node that falls behind (e.g., after a restart) automatically receives and replays missing log entries
 - **gRPC-based communication** — all inter-node and client-server communication uses Protocol Buffers over gRPC
 - **Chaos testing** — includes a script that randomly kills and restarts cluster nodes to verify resilience
+- **Durable recovery** — committed log entries and Raft election metadata survive process restarts
+- **Snapshots and compaction** — committed state is periodically snapshotted to bound WAL growth
+- **Optional mutual TLS** — client and peer connections can require verified certificates
+- **Reloadable membership** — peer endpoints can be changed through a watched configuration file
 
 ## Architecture
 
@@ -78,14 +82,29 @@ hello-grpc/
 └── SETUP.md
 ```
 
-## Known Limitations
+## Runtime configuration
 
-This is a learning-focused implementation and intentionally omits some production concerns:
+Each node stores its state under `data/node_<port>/`:
 
-- **No persistence** — all data and log entries are stored in memory and lost on restart
-- **No log compaction / snapshotting** — the log grows unbounded
-- **No TLS / authentication** — communication is unencrypted (`InsecureChannelCredentials`)
-- **Fixed cluster membership** — nodes must be started with a known, static peer list
+
+For mTLS, pass the CA, certificate, and private key to both servers and clients:
+
+```powershell
+.\build\Debug\server.exe 50051 50052 50053 --ca ca.pem --cert node-50051.pem --key node-50051-key.pem
+.\build\Debug\client.exe --address localhost:50051 --ca ca.pem --cert client.pem --key client-key.pem
+```
+
+To reload membership without restarting a node, pass `--peers-file`. Put one `host:port`
+per line in the file and edit it while the node is running:
+
+```text
+localhost:50052
+localhost:50053
+```
+
+```powershell
+.\build\Debug\server.exe 50051 --peers-file peers-50051.txt
+```
 
 ## License
 
