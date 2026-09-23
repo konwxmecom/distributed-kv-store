@@ -1,6 +1,6 @@
 # Distributed Key-Value Store with Raft Consensus
 
-A distributed, in-memory key-value store built from scratch in C++, implementing the **Raft consensus algorithm** for leader election and log replication. Inspired by systems like etcd and Consul, this project demonstrates core distributed systems concepts — consensus, replication, failure detection, and automatic recovery — through a working, testable implementation.
+A distributed key-value store built from scratch in C++, implementing the **Raft consensus algorithm** for leader election and log replication. The applied state machine is in memory, while the Raft WAL and snapshots provide durable recovery. Inspired by systems like etcd and Consul, this project demonstrates consensus, replication, failure detection, and automatic recovery.
 
 ## Features
 
@@ -47,10 +47,10 @@ See [SETUP.md](./SETUP.md) for full, step-by-step instructions on setting up the
 
 ### Quick overview
 
-```bash
+```powershell
 # Build
-cd build
-cmake --build .
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=C:\dev\vcpkg\scripts\buildsystems\vcpkg.cmake
+cmake --build build
 
 # Run a 3-node cluster (in three separate terminals)
 .\build\Debug\server.exe 50051 50052 50053
@@ -72,7 +72,7 @@ This starts a 3-node cluster and repeatedly kills/restarts a random node to veri
 ## Project Structure
 
 ```
-hello-grpc/
+distributed-kv-store/
 ├── proto/
 │   └── kvstore.proto        # Service and message definitions
 ├── server.cpp                # Raft node implementation (election + replication + KV store)
@@ -86,6 +86,9 @@ hello-grpc/
 
 Each node stores its state under `data/node_<port>/`:
 
+- `raft.meta` stores the current term and vote.
+- `raft.snapshot` stores compacted state after the committed log grows sufficiently.
+- `raft.wal` contains length-prefixed protobuf log records and is replayed on startup.
 
 For mTLS, pass the CA, certificate, and private key to both servers and clients:
 
