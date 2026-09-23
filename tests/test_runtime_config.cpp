@@ -43,3 +43,10 @@ TEST(RuntimeConfig, RejectsUnknownKeys)
     EXPECT_THROW(LoadRuntimeConfig(path), std::runtime_error);
     std::filesystem::remove(path);
 }
+
+TEST(RuntimeConfig, RejectsMissingFile)
+{
+    const auto path = std::filesystem::temp_directory_path() / "kvstore-runtime-missing.conf";
+    std::filesystem::remove(path);
+    EXPECT_THROW(LoadRuntimeConfig(path), std::runtime_error);
+}
