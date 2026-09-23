@@ -94,5 +94,6 @@ target_link_libraries(runtime_config_tests
 
 add_test(NAME raft_tests COMMAND raft_tests)
 add_test(NAME runtime_config_tests COMMAND runtime_config_tests)
+set_tests_properties(raft_tests runtime_config_tests PROPERTIES TIMEOUT 60)
 
 enable_testing()
