@@ -9,6 +9,10 @@
 #include <atomic>
 #include <random>
 #include <algorithm>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <stdexcept>
 
 #include <grpcpp/grpcpp.h>
 #include "kvstore.grpc.pb.h"
@@ -72,6 +76,103 @@ private:
     std::mutex log_mutex;
     std::vector<int> next_index;  // leader-only: next log index to send to each peer
     std::vector<int> match_index; // leader-only: highest log index known to be replicated on each peer
+    std::filesystem::path data_directory;
+    std::ofstream wal;
+
+    static bool ReadRecord(std::ifstream &input, std::string &record)
+    {
+        std::uint32_t size = 0;
+        input.read(reinterpret_cast<char *>(&size), sizeof(size));
+        if (!input)
+            return false;
+        if (size > 64 * 1024 * 1024)
+            throw std::runtime_error("WAL record is unreasonably large");
+        record.resize(size);
+        input.read(record.data(), size);
+        if (!input)
+            throw std::runtime_error("WAL contains a truncated record");
+        return true;
+    }
+
+    void PersistRecord(const LogEntry &entry)
+    {
+        std::string serialized;
+        if (!entry.SerializeToString(&serialized))
+            throw std::runtime_error("failed to serialize WAL record");
+        const auto size = static_cast<std::uint32_t>(serialized.size());
+        wal.write(reinterpret_cast<const char *>(&size), sizeof(size));
+        wal.write(serialized.data(), static_cast<std::streamsize>(serialized.size()));
+        wal.flush();
+        if (!wal)
+            throw std::runtime_error("failed to flush WAL");
+    }
+
+    void RewriteWal()
+    {
+        const auto wal_path = data_directory / "raft.wal";
+        const auto temporary = data_directory / "raft.wal.tmp";
+        {
+            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+            for (const auto &entry : log_entries)
+            {
+                std::string serialized;
+                if (!entry.SerializeToString(&serialized))
+                    throw std::runtime_error("failed to serialize WAL record");
+                const auto size = static_cast<std::uint32_t>(serialized.size());
+                output.write(reinterpret_cast<const char *>(&size), sizeof(size));
+                output.write(serialized.data(), static_cast<std::streamsize>(serialized.size()));
+            }
+            output.flush();
+            if (!output)
+                throw std::runtime_error("failed to rewrite WAL");
+        }
+        wal.close();
+        std::filesystem::rename(temporary, wal_path);
+        wal.open(wal_path, std::ios::binary | std::ios::app);
+        if (!wal)
+            throw std::runtime_error("failed to reopen WAL");
+    }
+
+    void LoadPersistentState()
+    {
+        std::filesystem::create_directories(data_directory);
+        const auto metadata_path = data_directory / "raft.meta";
+        {
+            std::ifstream metadata(metadata_path);
+            if (metadata)
+                metadata >> current_term >> voted_for;
+        }
+
+        const auto wal_path = data_directory / "raft.wal";
+        std::ifstream input(wal_path, std::ios::binary);
+        std::string record;
+        while (input && ReadRecord(input, record))
+        {
+            LogEntry entry;
+            if (!entry.ParseFromString(record))
+                throw std::runtime_error("WAL contains an invalid log entry");
+            log_entries.push_back(std::move(entry));
+        }
+        wal.open(wal_path, std::ios::binary | std::ios::app);
+        if (!wal)
+            throw std::runtime_error("failed to open WAL: " + wal_path.string());
+        std::cout << "Recovered " << log_entries.size() << " log entries from "
+                  << wal_path << std::endl;
+    }
+
+    void PersistMetadata()
+    {
+        const auto temporary = data_directory / "raft.meta.tmp";
+        const auto metadata_path = data_directory / "raft.meta";
+        {
+            std::ofstream metadata(temporary, std::ios::trunc);
+            metadata << current_term << " " << voted_for << "\n";
+            metadata.flush();
+            if (!metadata)
+                throw std::runtime_error("failed to write Raft metadata");
+        }
+        std::filesystem::rename(temporary, metadata_path);
+    }
 
     // Generates a randomized election timeout to reduce the chance of
     // multiple nodes becoming candidates simultaneously (split votes).
@@ -157,6 +258,7 @@ private:
             std::lock_guard<std::mutex> lock(election_mutex);
             current_term++;
             voted_for = node_id;
+            PersistMetadata();
             state = NodeState::CANDIDATE;
             std::cout << "Becoming CANDIDATE for term " << current_term << std::endl;
         }
@@ -208,10 +310,13 @@ private:
 
 public:
     KVStoreServiceImpl(int my_port, const std::vector<std::string> &peer_addresses,
-                       const std::vector<int> &peer_port_ids)
+                       const std::vector<int> &peer_port_ids,
+                       const std::filesystem::path &storage_path)
     {
         node_id = my_port;
+        data_directory = storage_path;
         last_heartbeat = std::chrono::steady_clock::now();
+        LoadPersistentState();
 
         for (const auto &addr : peer_addresses)
         {
@@ -298,6 +403,7 @@ public:
         {
             log_entries.push_back(e);
         }
+        RewriteWal();
 
         if (request->leader_commit() > commit_index)
         {
@@ -319,6 +425,7 @@ public:
         {
             current_term = request->candidate_term();
             voted_for = -1;
+            PersistMetadata();
             state = NodeState::FOLLOWER;
         }
         bool grant = false;
@@ -327,6 +434,7 @@ public:
         {
             grant = true;
             voted_for = request->candidate_id();
+            PersistMetadata();
             std::lock_guard<std::mutex> hb_lock(heartbeat_mutex);
             last_heartbeat = std::chrono::steady_clock::now();
         }
@@ -379,6 +487,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(log_mutex);
             log_entries.push_back(entry);
+            PersistRecord(entry);
             new_index = (int)log_entries.size() - 1;
         }
         std::cout << "LOG APPEND index=" << new_index << " " << request->key() << "=" << request->value() << std::endl;
@@ -425,7 +534,8 @@ void RunServer(const std::string &port, const std::vector<std::string> &peer_add
                const std::vector<int> &peer_ids)
 {
     std::string server_address = "0.0.0.0:" + port;
-    KVStoreServiceImpl service(std::stoi(port), peer_addresses, peer_ids);
+    KVStoreServiceImpl service(std::stoi(port), peer_addresses, peer_ids,
+                               std::filesystem::path("data") / ("node_" + port));
 
     ServerBuilder builder;
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
