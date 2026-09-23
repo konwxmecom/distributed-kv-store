@@ -75,7 +75,59 @@ private:
     std::mutex store_mutex;
 
     // Outbound connections to every other node in the cluster.
-    std::vector<std::unique_ptr<KVStore::Stub>> peer_stubs;
+    std::vector<std::shared_ptr<KVStore::Stub>> peer_stubs;
+    std::mutex peers_mutex;
+    std::filesystem::path peers_file;
+    std::filesystem::file_time_type peers_file_timestamp{};
+
+    std::vector<std::shared_ptr<KVStore::Stub>> PeerSnapshot()
+    {
+        std::lock_guard<std::mutex> lock(peers_mutex);
+        return peer_stubs;
+    }
+
+    void ReloadPeersIfChanged()
+    {
+        if (peers_file.empty() || !std::filesystem::exists(peers_file))
+            return;
+        const auto timestamp = std::filesystem::last_write_time(peers_file);
+        if (timestamp == peers_file_timestamp)
+            return;
+
+        std::ifstream input(peers_file);
+        std::vector<std::shared_ptr<KVStore::Stub>> updated;
+        std::string address;
+        while (std::getline(input, address))
+        {
+            if (address.empty() || address[0] == '#')
+                continue;
+            std::shared_ptr<grpc::ChannelCredentials> credentials;
+            if (tls_config.Enabled())
+            {
+                grpc::SslCredentialsOptions options;
+                options.pem_root_certs = ReadTextFile(tls_config.ca_file);
+                options.pem_cert_chain = ReadTextFile(tls_config.certificate_file);
+                options.pem_private_key = ReadTextFile(tls_config.private_key_file);
+                credentials = grpc::SslCredentials(options);
+            }
+            else
+            {
+                credentials = grpc::InsecureChannelCredentials();
+            }
+            updated.emplace_back(KVStore::NewStub(grpc::CreateChannel(address, credentials)));
+        }
+        if (updated.empty())
+            throw std::runtime_error("membership file must contain at least one peer");
+        {
+            std::lock_guard<std::mutex> lock(peers_mutex);
+            peer_stubs = std::move(updated);
+            std::lock_guard<std::mutex> log_lock(log_mutex);
+            next_index.assign(peer_stubs.size(), log_offset + (int)log_entries.size());
+            match_index.assign(peer_stubs.size(), snapshot_last_index);
+        }
+        peers_file_timestamp = timestamp;
+        std::cout << "Reloaded " << peer_stubs.size() << " peers from " << peers_file << std::endl;
+    }
 
     // Core Raft state.
     std::atomic<NodeState> state{NodeState::FOLLOWER};
@@ -308,6 +360,9 @@ private:
     // how a peer that has fallen behind automatically catches up.
     bool SendAppendEntries(size_t peer_idx)
     {
+        const auto peers = PeerSnapshot();
+        if (peer_idx >= peers.size())
+            return false;
         while (true)
         {
             AppendEntriesRequest req;
@@ -333,7 +388,7 @@ private:
 
             AppendEntriesResponse resp;
             ClientContext ctx;
-            Status status = peer_stubs[peer_idx]->AppendEntries(&ctx, req, &resp);
+            Status status = peers[peer_idx]->AppendEntries(&ctx, req, &resp);
 
             if (!status.ok())
                 return false; // peer unreachable this round
@@ -377,7 +432,7 @@ private:
         int votes = 1; // vote for self
         int my_term = current_term;
 
-        for (auto &stub : peer_stubs)
+        for (auto &stub : PeerSnapshot())
         {
             VoteRequest req;
             req.set_candidate_term(my_term);
@@ -389,7 +444,7 @@ private:
                 votes++;
         }
 
-        int total_nodes = (int)peer_stubs.size() + 1;
+        int total_nodes = (int)PeerSnapshot().size() + 1;
         int majority = (total_nodes / 2) + 1;
 
         std::lock_guard<std::mutex> lock(election_mutex);
@@ -423,11 +478,13 @@ public:
     KVStoreServiceImpl(int my_port, const std::vector<std::string> &peer_addresses,
                        const std::vector<int> &peer_port_ids,
                        const std::filesystem::path &storage_path,
-                       const TlsConfig &security_config)
+                       const TlsConfig &security_config,
+                       const std::filesystem::path &membership_path)
     {
         node_id = my_port;
         data_directory = storage_path;
         tls_config = security_config;
+        peers_file = membership_path;
         last_heartbeat = std::chrono::steady_clock::now();
         LoadPersistentState();
 
@@ -447,7 +504,7 @@ public:
                 credentials = grpc::InsecureChannelCredentials();
             }
             auto channel = grpc::CreateChannel(addr, credentials);
-            peer_stubs.push_back(KVStore::NewStub(channel));
+            peer_stubs.emplace_back(KVStore::NewStub(channel));
         }
 
         next_index.assign(peer_stubs.size(), log_offset + (int)log_entries.size());
@@ -458,6 +515,9 @@ public:
         std::thread([this]()
                     {
             while (running) {
+                try { ReloadPeersIfChanged(); } catch (const std::exception& error) {
+                    std::cerr << "Membership reload failed: " << error.what() << std::endl;
+                }
                 int timeout_ms = RandomElectionTimeout();
                 std::this_thread::sleep_for(std::chrono::milliseconds(timeout_ms));
                 if (state == NodeState::LEADER) continue;
@@ -473,7 +533,7 @@ public:
                     {
             while (running) {
                 if (state == NodeState::LEADER) {
-                    for (auto& stub : peer_stubs) {
+                    for (auto& stub : PeerSnapshot()) {
                         HeartbeatRequest req;
                         req.set_leader_port(node_id);
                         req.set_leader_term(current_term);
@@ -629,12 +689,12 @@ public:
         if (state == NodeState::LEADER)
         {
             int acks = 1; // count ourselves
-            for (size_t i = 0; i < peer_stubs.size(); i++)
+            for (size_t i = 0; i < PeerSnapshot().size(); i++)
             {
                 if (SendAppendEntries(i))
                     acks++;
             }
-            int majority = ((int)peer_stubs.size() + 1) / 2 + 1;
+            int majority = ((int)PeerSnapshot().size() + 1) / 2 + 1;
             if (acks >= majority)
             {
                 std::lock_guard<std::mutex> lock(log_mutex);
@@ -646,7 +706,7 @@ public:
 
             // Send a second round so followers receive the updated commit
             // index even if their log already matches (no new entries to send).
-            for (size_t i = 0; i < peer_stubs.size(); i++)
+            for (size_t i = 0; i < PeerSnapshot().size(); i++)
             {
                 SendAppendEntries(i);
             }
@@ -666,11 +726,13 @@ public:
 };
 
 void RunServer(const std::string &port, const std::vector<std::string> &peer_addresses,
-               const std::vector<int> &peer_ids, const TlsConfig &tls_config)
+               const std::vector<int> &peer_ids, const TlsConfig &tls_config,
+               const std::filesystem::path &membership_path)
 {
     std::string server_address = "0.0.0.0:" + port;
     KVStoreServiceImpl service(std::stoi(port), peer_addresses, peer_ids,
-                               std::filesystem::path("data") / ("node_" + port), tls_config);
+                               std::filesystem::path("data") / ("node_" + port), tls_config,
+                               membership_path);
 
     ServerBuilder builder;
     if (tls_config.Enabled())
@@ -720,6 +782,7 @@ int main(int argc, char **argv)
     std::vector<std::string> peer_addresses;
     std::vector<int> peer_ids;
     TlsConfig tls_config;
+    std::filesystem::path membership_path;
 
     for (int i = 2; i < argc; i++)
     {
@@ -738,12 +801,17 @@ int main(int argc, char **argv)
             tls_config.private_key_file = argv[++i];
             continue;
         }
+        if (std::string(argv[i]) == "--peers-file" && i + 1 < argc)
+        {
+            membership_path = argv[++i];
+            continue;
+        }
         peer_addresses.push_back("localhost:" + std::string(argv[i]));
         peer_ids.push_back(std::stoi(argv[i]));
     }
 
     if (tls_config.Enabled())
         std::cout << "TLS/mTLS enabled" << std::endl;
-    RunServer(port, peer_addresses, peer_ids, tls_config);
+    RunServer(port, peer_addresses, peer_ids, tls_config, membership_path);
     return 0;
 }
