@@ -140,6 +140,11 @@ localhost:50053
 .\build\Debug\server.exe 50051 --peers-file peers-50051.txt
 ```
 
+The membership watcher reloads changed peer files during runtime and rebuilds the
+outbound gRPC stubs without restarting the node. Keep one endpoint per line and do
+not leave the file empty; an empty membership is rejected to avoid silently changing
+the quorum model.
+
 ## Operator console
 
 The `web/` directory contains a lightweight dashboard for exploring the store from a browser.
