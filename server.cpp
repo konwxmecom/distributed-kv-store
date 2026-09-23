@@ -70,6 +70,7 @@ enum class NodeState
 class KVStoreServiceImpl final : public KVStore::Service
 {
 private:
+    static constexpr const char *kDeleteMarker = "__raft_kv_delete__";
     // Applied state machine - only reflects committed log entries.
     std::unordered_map<std::string, std::string> store;
     std::mutex store_mutex;
@@ -350,8 +351,11 @@ private:
             last_applied++;
             const auto &e = log_entries[last_applied - log_offset];
             std::lock_guard<std::mutex> store_lock(store_mutex);
-            store[e.key()] = e.value();
-            std::cout << "APPLIED index=" << last_applied << " " << e.key() << "=" << e.value() << std::endl;
+            if (e.value() == kDeleteMarker)
+                store.erase(e.key());
+            else
+                store[e.key()] = e.value();
+            std::cout << "APPLIED index=" << last_applied << " " << e.key() << std::endl;
         }
     }
 
@@ -472,6 +476,40 @@ private:
             std::cout << "Election failed (" << votes << "/" << total_nodes
                       << " votes) - reverting to FOLLOWER" << std::endl;
         }
+    }
+
+    bool CommitEntry(const LogEntry &entry)
+    {
+        if (state != NodeState::LEADER)
+            return false;
+
+        int new_index;
+        {
+            std::lock_guard<std::mutex> lock(log_mutex);
+            log_entries.push_back(entry);
+            PersistRecord(entry);
+            new_index = log_offset + (int)log_entries.size() - 1;
+        }
+
+        int acks = 1;
+        for (size_t i = 0; i < PeerSnapshot().size(); i++)
+        {
+            if (SendAppendEntries(i))
+                acks++;
+        }
+        const int majority = ((int)PeerSnapshot().size() + 1) / 2 + 1;
+        if (acks < majority)
+            return false;
+
+        {
+            std::lock_guard<std::mutex> lock(log_mutex);
+            commit_index = std::max(commit_index, new_index);
+            ApplyCommitted();
+            CompactSnapshot();
+        }
+        for (size_t i = 0; i < PeerSnapshot().size(); i++)
+            SendAppendEntries(i);
+        return true;
     }
 
 public:
@@ -672,55 +710,33 @@ public:
 
     Status Set(ServerContext *context, const SetRequest *request, SetResponse *response) override
     {
+        if (state != NodeState::LEADER)
+        {
+            response->set_success(false);
+            return Status::OK;
+        }
+
         LogEntry entry;
         entry.set_term(current_term);
         entry.set_key(request->key());
         entry.set_value(request->value());
-
-        int new_index;
-        {
-            std::lock_guard<std::mutex> lock(log_mutex);
-            log_entries.push_back(entry);
-            PersistRecord(entry);
-            new_index = log_offset + (int)log_entries.size() - 1;
-        }
-        std::cout << "LOG APPEND index=" << new_index << " " << request->key() << "=" << request->value() << std::endl;
-
-        if (state == NodeState::LEADER)
-        {
-            int acks = 1; // count ourselves
-            for (size_t i = 0; i < PeerSnapshot().size(); i++)
-            {
-                if (SendAppendEntries(i))
-                    acks++;
-            }
-            int majority = ((int)PeerSnapshot().size() + 1) / 2 + 1;
-            if (acks >= majority)
-            {
-                std::lock_guard<std::mutex> lock(log_mutex);
-                if (new_index > commit_index)
-                    commit_index = new_index;
-                ApplyCommitted();
-                CompactSnapshot();
-            }
-
-            // Send a second round so followers receive the updated commit
-            // index even if their log already matches (no new entries to send).
-            for (size_t i = 0; i < PeerSnapshot().size(); i++)
-            {
-                SendAppendEntries(i);
-            }
-        }
-
-        response->set_success(true);
+        response->set_success(CommitEntry(entry));
         return Status::OK;
     }
 
     Status Delete(ServerContext *context, const DeleteRequest *request, DeleteResponse *response) override
     {
-        std::lock_guard<std::mutex> lock(store_mutex);
-        size_t erased = store.erase(request->key());
-        response->set_success(erased > 0);
+        if (state != NodeState::LEADER)
+        {
+            response->set_success(false);
+            return Status::OK;
+        }
+
+        LogEntry entry;
+        entry.set_term(current_term);
+        entry.set_key(request->key());
+        entry.set_value(kDeleteMarker);
+        response->set_success(CommitEntry(entry));
         return Status::OK;
     }
 };
