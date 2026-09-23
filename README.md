@@ -124,6 +124,10 @@ After the compaction threshold is reached, committed state is written to
 `raft.snapshot` and the obsolete WAL prefix is removed. Restart recovery loads the
 snapshot first and then replays the remaining WAL suffix.
 
+TLS configuration is intentionally strict: `ca`, `cert`, and `key` must either all
+be present or all be omitted. When present, the server requires verified client
+certificates and the gateway/client use the same CA trust root.
+
 To reload membership without restarting a node, pass `--peers-file`. Put one `host:port`
 per line in the file and edit it while the node is running:
 
