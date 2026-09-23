@@ -23,6 +23,7 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/arena.h>
 #include <google/protobuf/arenastring.h>
+#include <google/protobuf/generated_message_bases.h>
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/metadata_lite.h>
 #include <google/protobuf/generated_message_reflection.h>
@@ -69,6 +70,12 @@ extern HeartbeatRequestDefaultTypeInternal _HeartbeatRequest_default_instance_;
 class HeartbeatResponse;
 struct HeartbeatResponseDefaultTypeInternal;
 extern HeartbeatResponseDefaultTypeInternal _HeartbeatResponse_default_instance_;
+class ListKeysRequest;
+struct ListKeysRequestDefaultTypeInternal;
+extern ListKeysRequestDefaultTypeInternal _ListKeysRequest_default_instance_;
+class ListKeysResponse;
+struct ListKeysResponseDefaultTypeInternal;
+extern ListKeysResponseDefaultTypeInternal _ListKeysResponse_default_instance_;
 class LogEntry;
 struct LogEntryDefaultTypeInternal;
 extern LogEntryDefaultTypeInternal _LogEntry_default_instance_;
@@ -94,6 +101,8 @@ template<> ::kvstore::GetRequest* Arena::CreateMaybeMessage<::kvstore::GetReques
 template<> ::kvstore::GetResponse* Arena::CreateMaybeMessage<::kvstore::GetResponse>(Arena*);
 template<> ::kvstore::HeartbeatRequest* Arena::CreateMaybeMessage<::kvstore::HeartbeatRequest>(Arena*);
 template<> ::kvstore::HeartbeatResponse* Arena::CreateMaybeMessage<::kvstore::HeartbeatResponse>(Arena*);
+template<> ::kvstore::ListKeysRequest* Arena::CreateMaybeMessage<::kvstore::ListKeysRequest>(Arena*);
+template<> ::kvstore::ListKeysResponse* Arena::CreateMaybeMessage<::kvstore::ListKeysResponse>(Arena*);
 template<> ::kvstore::LogEntry* Arena::CreateMaybeMessage<::kvstore::LogEntry>(Arena*);
 template<> ::kvstore::SetRequest* Arena::CreateMaybeMessage<::kvstore::SetRequest>(Arena*);
 template<> ::kvstore::SetResponse* Arena::CreateMaybeMessage<::kvstore::SetResponse>(Arena*);
@@ -1039,6 +1048,287 @@ class DeleteResponse final :
 };
 // -------------------------------------------------------------------
 
+class ListKeysRequest final :
+    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:kvstore.ListKeysRequest) */ {
+ public:
+  inline ListKeysRequest() : ListKeysRequest(nullptr) {}
+  explicit PROTOBUF_CONSTEXPR ListKeysRequest(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  ListKeysRequest(const ListKeysRequest& from);
+  ListKeysRequest(ListKeysRequest&& from) noexcept
+    : ListKeysRequest() {
+    *this = ::std::move(from);
+  }
+
+  inline ListKeysRequest& operator=(const ListKeysRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ListKeysRequest& operator=(ListKeysRequest&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ListKeysRequest& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const ListKeysRequest* internal_default_instance() {
+    return reinterpret_cast<const ListKeysRequest*>(
+               &_ListKeysRequest_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    6;
+
+  friend void swap(ListKeysRequest& a, ListKeysRequest& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(ListKeysRequest* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ListKeysRequest* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ListKeysRequest* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<ListKeysRequest>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
+  inline void CopyFrom(const ListKeysRequest& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
+  void MergeFrom(const ListKeysRequest& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
+  }
+  public:
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "kvstore.ListKeysRequest";
+  }
+  protected:
+  explicit ListKeysRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // @@protoc_insertion_point(class_scope:kvstore.ListKeysRequest)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+  };
+  friend struct ::TableStruct_kvstore_2eproto;
+};
+// -------------------------------------------------------------------
+
+class ListKeysResponse final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:kvstore.ListKeysResponse) */ {
+ public:
+  inline ListKeysResponse() : ListKeysResponse(nullptr) {}
+  ~ListKeysResponse() override;
+  explicit PROTOBUF_CONSTEXPR ListKeysResponse(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  ListKeysResponse(const ListKeysResponse& from);
+  ListKeysResponse(ListKeysResponse&& from) noexcept
+    : ListKeysResponse() {
+    *this = ::std::move(from);
+  }
+
+  inline ListKeysResponse& operator=(const ListKeysResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ListKeysResponse& operator=(ListKeysResponse&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ListKeysResponse& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const ListKeysResponse* internal_default_instance() {
+    return reinterpret_cast<const ListKeysResponse*>(
+               &_ListKeysResponse_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    7;
+
+  friend void swap(ListKeysResponse& a, ListKeysResponse& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(ListKeysResponse* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ListKeysResponse* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ListKeysResponse* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<ListKeysResponse>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const ListKeysResponse& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const ListKeysResponse& from) {
+    ListKeysResponse::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(ListKeysResponse* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "kvstore.ListKeysResponse";
+  }
+  protected:
+  explicit ListKeysResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kKeysFieldNumber = 1,
+  };
+  // repeated string keys = 1;
+  int keys_size() const;
+  private:
+  int _internal_keys_size() const;
+  public:
+  void clear_keys();
+  const std::string& keys(int index) const;
+  std::string* mutable_keys(int index);
+  void set_keys(int index, const std::string& value);
+  void set_keys(int index, std::string&& value);
+  void set_keys(int index, const char* value);
+  void set_keys(int index, const char* value, size_t size);
+  std::string* add_keys();
+  void add_keys(const std::string& value);
+  void add_keys(std::string&& value);
+  void add_keys(const char* value);
+  void add_keys(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& keys() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_keys();
+  private:
+  const std::string& _internal_keys(int index) const;
+  std::string* _internal_add_keys();
+  public:
+
+  // @@protoc_insertion_point(class_scope:kvstore.ListKeysResponse)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> keys_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_kvstore_2eproto;
+};
+// -------------------------------------------------------------------
+
 class HeartbeatRequest final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:kvstore.HeartbeatRequest) */ {
  public:
@@ -1087,7 +1377,7 @@ class HeartbeatRequest final :
                &_HeartbeatRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    6;
+    8;
 
   friend void swap(HeartbeatRequest& a, HeartbeatRequest& b) {
     a.Swap(&b);
@@ -1246,7 +1536,7 @@ class HeartbeatResponse final :
                &_HeartbeatResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    7;
+    9;
 
   friend void swap(HeartbeatResponse& a, HeartbeatResponse& b) {
     a.Swap(&b);
@@ -1394,7 +1684,7 @@ class VoteRequest final :
                &_VoteRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    8;
+    10;
 
   friend void swap(VoteRequest& a, VoteRequest& b) {
     a.Swap(&b);
@@ -1553,7 +1843,7 @@ class VoteResponse final :
                &_VoteResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    9;
+    11;
 
   friend void swap(VoteResponse& a, VoteResponse& b) {
     a.Swap(&b);
@@ -1712,7 +2002,7 @@ class LogEntry final :
                &_LogEntry_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    10;
+    12;
 
   friend void swap(LogEntry& a, LogEntry& b) {
     a.Swap(&b);
@@ -1892,7 +2182,7 @@ class AppendEntriesRequest final :
                &_AppendEntriesRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    11;
+    13;
 
   friend void swap(AppendEntriesRequest& a, AppendEntriesRequest& b) {
     a.Swap(&b);
@@ -2104,7 +2394,7 @@ class AppendEntriesResponse final :
                &_AppendEntriesResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    12;
+    14;
 
   friend void swap(AppendEntriesResponse& a, AppendEntriesResponse& b) {
     a.Swap(&b);
@@ -2563,6 +2853,89 @@ inline void DeleteResponse::_internal_set_success(bool value) {
 inline void DeleteResponse::set_success(bool value) {
   _internal_set_success(value);
   // @@protoc_insertion_point(field_set:kvstore.DeleteResponse.success)
+}
+
+// -------------------------------------------------------------------
+
+// ListKeysRequest
+
+// -------------------------------------------------------------------
+
+// ListKeysResponse
+
+// repeated string keys = 1;
+inline int ListKeysResponse::_internal_keys_size() const {
+  return _impl_.keys_.size();
+}
+inline int ListKeysResponse::keys_size() const {
+  return _internal_keys_size();
+}
+inline void ListKeysResponse::clear_keys() {
+  _impl_.keys_.Clear();
+}
+inline std::string* ListKeysResponse::add_keys() {
+  std::string* _s = _internal_add_keys();
+  // @@protoc_insertion_point(field_add_mutable:kvstore.ListKeysResponse.keys)
+  return _s;
+}
+inline const std::string& ListKeysResponse::_internal_keys(int index) const {
+  return _impl_.keys_.Get(index);
+}
+inline const std::string& ListKeysResponse::keys(int index) const {
+  // @@protoc_insertion_point(field_get:kvstore.ListKeysResponse.keys)
+  return _internal_keys(index);
+}
+inline std::string* ListKeysResponse::mutable_keys(int index) {
+  // @@protoc_insertion_point(field_mutable:kvstore.ListKeysResponse.keys)
+  return _impl_.keys_.Mutable(index);
+}
+inline void ListKeysResponse::set_keys(int index, const std::string& value) {
+  _impl_.keys_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:kvstore.ListKeysResponse.keys)
+}
+inline void ListKeysResponse::set_keys(int index, std::string&& value) {
+  _impl_.keys_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:kvstore.ListKeysResponse.keys)
+}
+inline void ListKeysResponse::set_keys(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.keys_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:kvstore.ListKeysResponse.keys)
+}
+inline void ListKeysResponse::set_keys(int index, const char* value, size_t size) {
+  _impl_.keys_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:kvstore.ListKeysResponse.keys)
+}
+inline std::string* ListKeysResponse::_internal_add_keys() {
+  return _impl_.keys_.Add();
+}
+inline void ListKeysResponse::add_keys(const std::string& value) {
+  _impl_.keys_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:kvstore.ListKeysResponse.keys)
+}
+inline void ListKeysResponse::add_keys(std::string&& value) {
+  _impl_.keys_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:kvstore.ListKeysResponse.keys)
+}
+inline void ListKeysResponse::add_keys(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.keys_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:kvstore.ListKeysResponse.keys)
+}
+inline void ListKeysResponse::add_keys(const char* value, size_t size) {
+  _impl_.keys_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:kvstore.ListKeysResponse.keys)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+ListKeysResponse::keys() const {
+  // @@protoc_insertion_point(field_list:kvstore.ListKeysResponse.keys)
+  return _impl_.keys_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+ListKeysResponse::mutable_keys() {
+  // @@protoc_insertion_point(field_mutable_list:kvstore.ListKeysResponse.keys)
+  return &_impl_.keys_;
 }
 
 // -------------------------------------------------------------------
@@ -3056,6 +3429,10 @@ inline void AppendEntriesResponse::set_match_index(int32_t value) {
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

@@ -31,11 +31,8 @@ using kvstore::GetResponse;
 using kvstore::HeartbeatRequest;
 using kvstore::HeartbeatResponse;
 using kvstore::KVStore;
-using kvstore::LogEntry;
-using kvstore::SetRequest;
-using kvstore::SetResponse;
-using kvstore::VoteRequest;
-using kvstore::VoteResponse;
+    using kvstore::ListKeysRequest;
+    using kvstore::ListKeysResponse;
 
 struct TlsConfig
 {
@@ -708,6 +705,23 @@ public:
         else
         {
             response->set_found(false);
+        }
+        return Status::OK;
+    }
+
+    Status ListKeys(ServerContext *context, const ListKeysRequest *request, ListKeysResponse *response) override
+    {
+        std::lock_guard<std::mutex> lock(store_mutex);
+        std::vector<std::string> keys;
+        keys.reserve(store.size());
+        for (const auto &[key, value] : store)
+        {
+            keys.push_back(key);
+        }
+        std::sort(keys.begin(), keys.end());
+        for (const auto &key : keys)
+        {
+            response->add_keys(key);
         }
         return Status::OK;
     }

@@ -8,6 +8,7 @@ service KVStore {
     rpc Get (GetRequest) returns (GetResponse);
     rpc Set (SetRequest) returns (SetResponse);
     rpc Delete (DeleteRequest) returns (DeleteResponse);
+    rpc ListKeys (ListKeysRequest) returns (ListKeysResponse);
 
     // Legacy leader-to-follower replication call (superseded by AppendEntries)
     rpc Replicate (SetRequest) returns (SetResponse);
@@ -46,6 +47,12 @@ message DeleteRequest {
 
 message DeleteResponse {
     bool success = 1;
+}
+
+message ListKeysRequest {}
+
+message ListKeysResponse {
+    repeated string keys = 1;
 }
 
 // --- Heartbeat / liveness ---

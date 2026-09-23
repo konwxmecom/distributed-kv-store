@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(gRPC CONFIG REQUIRED)
 find_package(Protobuf REQUIRED)
+find_package(GTest REQUIRED)
 
 add_executable(server
     server.cpp
@@ -18,6 +19,7 @@ target_link_libraries(server
     gRPC::grpc++
     protobuf::libprotobuf
 )
+
 add_executable(client
     client.cpp
     kvstore.pb.cc
@@ -29,4 +31,20 @@ target_link_libraries(client
     gRPC::grpc++
     protobuf::libprotobuf
 )
- 
+
+add_executable(raft_tests
+    tests/test_raft_integration.cpp
+    kvstore.pb.cc
+    kvstore.grpc.pb.cc
+)
+
+target_link_libraries(raft_tests
+    PRIVATE
+    gRPC::grpc++
+    protobuf::libprotobuf
+    GTest::gtest_main
+)
+
+add_test(NAME raft_tests COMMAND raft_tests)
+
+enable_testing()

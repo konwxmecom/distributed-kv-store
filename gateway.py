@@ -7,6 +7,7 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -15,6 +16,12 @@ import grpc
 
 ROOT = Path(__file__).resolve().parent
 PROTO = ROOT / "proto" / "kvstore.proto"
+REQUEST_COUNTERS = {
+    "get": 0,
+    "set": 0,
+    "delete": 0,
+    "health": 0,
+}
 
 
 def read_text(path):
@@ -45,6 +52,11 @@ class GatewayHandler(BaseHTTPRequestHandler):
     pb2 = None
     stub = None
 
+    @staticmethod
+    def _record_metric(method, status_code):
+        if method in REQUEST_COUNTERS:
+            REQUEST_COUNTERS[method] += 1
+
     def _send(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
@@ -67,23 +79,60 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/health":
+            try:
+                self.stub.Heartbeat(self.pb2.HeartbeatRequest(leader_port=0, leader_term=0), timeout=2)
+                self._record_metric("health", 200)
+                self._send(200, {"status": "ok", "connected": True, "target": self.server.target})
+            except grpc.RpcError as error:
+                self._record_metric("health", 503)
+                self._send(503, {"status": "error", "connected": False, "error": error.details()})
+            return
+
+        if parsed.path == "/metrics":
+            lines = ["# HELP kvstore_requests_total Total HTTP requests handled by the gateway.", "# TYPE kvstore_requests_total counter"]
+            for method, count in REQUEST_COUNTERS.items():
+                lines.append(f'kvstore_requests_total{{method="{method}"}} {count}')
+            body = "\n".join(lines) + "\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body.encode("utf-8"))
+            return
+
         if parsed.path == "/api/health":
             try:
                 self.stub.Heartbeat(self.pb2.HeartbeatRequest(leader_port=0, leader_term=0), timeout=2)
+                self._record_metric("health", 200)
                 self._send(200, {"connected": True, "target": self.server.target})
             except grpc.RpcError as error:
+                self._record_metric("health", 503)
                 self._send(503, {"connected": False, "error": error.details()})
+            return
+
+        if parsed.path == "/api/keys":
+            try:
+                response = self.stub.ListKeys(self.pb2.ListKeysRequest(), timeout=5)
+                self._record_metric("get", 200)
+                self._send(200, {"keys": list(response.keys)})
+            except grpc.RpcError as error:
+                self._record_metric("get", 502)
+                self._send(502, {"error": error.details()})
             return
 
         if parsed.path == "/api/entry":
             key = parse_qs(parsed.query).get("key", [""])[0]
             if not key:
+                self._record_metric("get", 400)
                 self._send(400, {"error": "key is required"})
                 return
             try:
                 response = self.stub.Get(self.pb2.GetRequest(key=key), timeout=2)
+                self._record_metric("get", 200)
                 self._send(200, {"key": key, "value": response.value, "found": response.found})
             except grpc.RpcError as error:
+                self._record_metric("get", 502)
                 self._send(502, {"error": error.details()})
             return
 
@@ -97,28 +146,36 @@ class GatewayHandler(BaseHTTPRequestHandler):
             body = self._read_json()
             key, value = str(body.get("key", "")).strip(), str(body.get("value", ""))
             if not key or not value:
+                self._record_metric("set", 400)
                 self._send(400, {"error": "key and value are required"})
                 return
             response = self.stub.Set(self.pb2.SetRequest(key=key, value=value), timeout=5)
             if not response.success:
+                self._record_metric("set", 409)
                 self._send(409, {"success": False, "error": "write was not committed"})
                 return
+            self._record_metric("set", 200)
             self._send(200, {"success": True, "key": key, "value": value})
         except grpc.RpcError as error:
+            self._record_metric("set", 502)
             self._send(502, {"success": False, "error": error.details()})
         except (TypeError, json.JSONDecodeError) as error:
+            self._record_metric("set", 400)
             self._send(400, {"error": str(error)})
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
         key = parse_qs(parsed.query).get("key", [""])[0]
         if parsed.path != "/api/entry" or not key:
+            self._record_metric("delete", 400)
             self._send(400, {"error": "key is required"})
             return
         try:
             response = self.stub.Delete(self.pb2.DeleteRequest(key=key), timeout=5)
+            self._record_metric("delete", 200)
             self._send(200, {"success": response.success, "key": key})
         except grpc.RpcError as error:
+            self._record_metric("delete", 502)
             self._send(502, {"success": False, "error": error.details()})
 
     def log_message(self, format, *args):

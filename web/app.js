@@ -137,7 +137,12 @@ async function loadFromGateway() {
     if (!health.ok) throw new Error("Raft node is unavailable");
     pill.innerHTML = '<span class="pulse"></span> Live cluster';
     pill.classList.add("connected");
-    const keys = JSON.parse(localStorage.getItem("raft-kv-keys") || "[]");
+
+    const keysResponse = await fetch(`${API_BASE}/keys`);
+    if (!keysResponse.ok) throw new Error("could not list keys from cluster");
+    const keysData = await keysResponse.json();
+    const keys = Array.isArray(keysData.keys) ? keysData.keys : [];
+
     const values = await Promise.all(keys.map(async (key) => {
       const response = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(key)}`);
       const data = await response.json();
