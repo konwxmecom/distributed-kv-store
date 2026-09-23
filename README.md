@@ -139,6 +139,10 @@ live health status, key CRUD requests, node topology, replication summary, and r
 The current protobuf API has no list-keys RPC, so the browser remembers keys written through
 the console and reads each one back through the gateway.
 
+The gateway also exposes `/health` for transport liveness, `/ready` for leader readiness,
+`/metrics` for Prometheus-compatible request counters, and `/api/cluster` for Raft term,
+commit index, and leader state.
+
 ## License
 
 MIT
