@@ -62,6 +62,16 @@ cmake --build build
 .\build\Debug\client.exe
 ```
 
+For repeatable deployments, start a node from a config file:
+
+```text
+./build/server --config config/node.conf
+```
+
+The config supports `port`, comma-separated `peers`, `data_root`, `peers_file`,
+and the TLS fields `ca`, `cert`, and `key`. Explicit command-line values override
+config-file values.
+
 ### Chaos testing
 
 ```powershell
