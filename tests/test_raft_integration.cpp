@@ -281,6 +281,33 @@ TEST(RaftIntegration, RecoversCommittedValueAfterRestart) {
     EXPECT_EQ(response.value(), "persistent-value");
 }
 
+TEST(RaftIntegration, CompactsCommittedLogIntoSnapshot) {
+    const std::string port = "18055";
+    const std::string address = "localhost:" + port;
+    const auto data_path = std::filesystem::path("data") / ("node_" + port);
+
+    {
+        TestServer server(port);
+        ASSERT_GT(server.pid, 0);
+        ASSERT_TRUE(WaitForServer(address));
+        ASSERT_TRUE(WaitForLeader(address));
+
+        auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+        auto stub = kvstore::KVStore::NewStub(channel);
+        for (int index = 0; index < 101; ++index) {
+            kvstore::SetRequest request;
+            request.set_key("snapshot-" + std::to_string(index));
+            request.set_value("value");
+            kvstore::SetResponse response;
+            grpc::ClientContext context;
+            ASSERT_TRUE(stub->Set(&context, request, &response).ok());
+            ASSERT_TRUE(response.success());
+        }
+    }
+
+    EXPECT_TRUE(std::filesystem::exists(data_path / "raft.snapshot"));
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
