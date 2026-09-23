@@ -50,9 +50,11 @@ git clone https://github.com/konwxmecom/distributed-kv-store.git
 cd distributed-kv-store
 ```
 
-## 5. Generate Code from the `.proto` File
+## 5. Generated gRPC Code
 
-The gRPC/Protobuf C++ code is generated from `proto/kvstore.proto` and is **not** committed to the repository — you need to regenerate it after cloning:
+The generated gRPC/Protobuf C++ files are included in this repository, so a normal
+clone does not require `protoc`. Regenerate them only after changing
+`proto/kvstore.proto`:
 
 ```powershell
 <path-to-vcpkg>\installed\x64-windows\tools\protobuf\protoc.exe ^
@@ -74,6 +76,13 @@ cd ..
 ```
 
 This produces `server.exe` and `client.exe` under `build\Debug\`.
+
+Verify the generated executables exist before starting the cluster:
+
+```powershell
+Test-Path .\build\Debug\server.exe
+Test-Path .\build\Debug\client.exe
+```
 
 ## 7. Run a Cluster
 
