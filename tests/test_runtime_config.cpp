@@ -61,3 +61,15 @@ TEST(RuntimeConfig, RejectsMalformedLines)
     EXPECT_THROW(LoadRuntimeConfig(path), std::runtime_error);
     std::filesystem::remove(path);
 }
+
+TEST(RuntimeConfig, RejectsPartialTlsConfiguration)
+{
+    const auto path = std::filesystem::temp_directory_path() / "kvstore-runtime-tls.conf";
+    {
+        std::ofstream output(path);
+        output << "ca = ca.pem\n"
+               << "cert = node.pem\n";
+    }
+    EXPECT_THROW(LoadRuntimeConfig(path), std::runtime_error);
+    std::filesystem::remove(path);
+}
