@@ -21,6 +21,7 @@ REQUEST_COUNTERS = {
     "set": 0,
     "delete": 0,
     "health": 0,
+    "cluster": 0,
 }
 
 
@@ -124,6 +125,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/cluster":
             try:
                 response = self.stub.GetClusterStatus(self.pb2.ClusterStatusRequest(), timeout=5)
+                self._record_metric("cluster", 200)
                 self._send(200, {
                     "node_id": response.node_id,
                     "leader_id": response.leader_id,
@@ -132,6 +134,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     "is_leader": response.is_leader,
                 })
             except grpc.RpcError as error:
+                self._record_metric("cluster", 502)
                 self._send(502, {"error": error.details()})
             return
 
