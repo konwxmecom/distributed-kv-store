@@ -29,6 +29,7 @@ find_package(GTest REQUIRED)
 
 add_executable(server
     server.cpp
+    runtime_config.cpp
     kvstore.pb.cc
     kvstore.grpc.pb.cc
 )
@@ -57,6 +58,11 @@ add_executable(raft_tests
     kvstore.grpc.pb.cc
 )
 
+add_executable(runtime_config_tests
+    tests/test_runtime_config.cpp
+    runtime_config.cpp
+)
+
 target_link_libraries(raft_tests
     PRIVATE
     gRPC::grpc++
@@ -64,6 +70,12 @@ target_link_libraries(raft_tests
     GTest::gtest_main
 )
 
+target_link_libraries(runtime_config_tests
+    PRIVATE
+    GTest::gtest_main
+)
+
 add_test(NAME raft_tests COMMAND raft_tests)
+add_test(NAME runtime_config_tests COMMAND runtime_config_tests)
 
 enable_testing()
