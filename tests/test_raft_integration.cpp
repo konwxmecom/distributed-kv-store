@@ -281,8 +281,82 @@ TEST(RaftIntegration, RecoversCommittedValueAfterRestart) {
     EXPECT_EQ(response.value(), "persistent-value");
 }
 
+TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
+    const std::string leader_port = "18055";
+    const std::string follower_port = "18056";
+    const std::string third_port = "18057";
+
+    auto leader_address = "localhost:" + leader_port;
+    auto follower_address = "localhost:" + follower_port;
+
+    pid_t leader_pid = StartServer(leader_port, {"localhost:18056", "localhost:18057"});
+    pid_t follower_pid = StartServer(follower_port, {"localhost:18055", "localhost:18057"});
+    pid_t third_pid = StartServer(third_port, {"localhost:18055", "localhost:18056"});
+
+    ASSERT_GT(leader_pid, 0);
+    ASSERT_GT(follower_pid, 0);
+    ASSERT_GT(third_pid, 0);
+
+    ASSERT_TRUE(WaitForServer(leader_address));
+    ASSERT_TRUE(WaitForServer(follower_address));
+    ASSERT_TRUE(WaitForServer("localhost:" + third_port));
+
+    std::string leader_seen;
+    for (int attempt = 0; attempt < 50; ++attempt) {
+        for (const auto &address : {leader_address, follower_address, "localhost:" + third_port}) {
+            auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+            kvstore::KVStore::Stub stub(channel);
+            kvstore::ClusterStatusRequest status_req;
+            kvstore::ClusterStatusResponse status_resp;
+            grpc::ClientContext status_ctx;
+            status_ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+            const auto status = stub.GetClusterStatus(&status_ctx, status_req, &status_resp);
+            if (status.ok() && status_resp.is_leader()) {
+                leader_seen = address;
+                break;
+            }
+        }
+        if (!leader_seen.empty()) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    ASSERT_FALSE(leader_seen.empty());
+
+    const auto follower_address_without_leader = leader_seen == leader_address ? follower_address : leader_address;
+    auto channel = grpc::CreateChannel(follower_address_without_leader, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+
+    kvstore::SetRequest request;
+    request.set_key("forwarded-from-follower");
+    request.set_value("ok");
+    kvstore::SetResponse response;
+    grpc::ClientContext context;
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+    ASSERT_TRUE(stub.Set(&context, request, &response).ok());
+    ASSERT_TRUE(response.success());
+
+    auto leader_channel = grpc::CreateChannel(leader_seen, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub leader_stub(leader_channel);
+    kvstore::GetRequest get_req;
+    get_req.set_key("forwarded-from-follower");
+    kvstore::GetResponse get_resp;
+    grpc::ClientContext get_ctx;
+    get_ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+    ASSERT_TRUE(leader_stub.Get(&get_ctx, get_req, &get_resp).ok());
+    ASSERT_TRUE(get_resp.found());
+    EXPECT_EQ(get_resp.value(), "ok");
+
+    kill(leader_pid, SIGTERM);
+    kill(follower_pid, SIGTERM);
+    kill(third_pid, SIGTERM);
+    waitpid(leader_pid, nullptr, 0);
+    waitpid(follower_pid, nullptr, 0);
+    waitpid(third_pid, nullptr, 0);
+}
+
 TEST(RaftIntegration, CompactsCommittedLogIntoSnapshot) {
-    const std::string port = "18055";
+    const std::string port = "18058";
     const std::string address = "localhost:" + port;
     const auto data_path = std::filesystem::path("data") / ("node_" + port);
 

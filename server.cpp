@@ -82,6 +82,7 @@ private:
 
     // Outbound connections to every other node in the cluster.
     std::vector<std::shared_ptr<KVStore::Stub>> peer_stubs;
+    std::vector<std::string> peer_addresses;
     std::mutex peers_mutex;
     std::filesystem::path peers_file;
     std::filesystem::file_time_type peers_file_timestamp{};
@@ -90,6 +91,41 @@ private:
     {
         std::lock_guard<std::mutex> lock(peers_mutex);
         return peer_stubs;
+    }
+
+    std::shared_ptr<KVStore::Stub> FindLeaderStub()
+    {
+        std::lock_guard<std::mutex> lock(peers_mutex);
+        for (size_t i = 0; i < peer_stubs.size(); ++i)
+        {
+            ClusterStatusRequest status_req;
+            ClusterStatusResponse status_resp;
+            ClientContext ctx;
+            ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+            const auto status = peer_stubs[i]->GetClusterStatus(&ctx, status_req, &status_resp);
+            if (status.ok() && status_resp.is_leader())
+                return peer_stubs[i];
+        }
+        return nullptr;
+    }
+
+    template <typename Request, typename Response>
+    bool ForwardToLeader(const Request &request, Response *response,
+                         std::function<grpc::Status(grpc::ClientContext *, const Request &, Response *)> call)
+    {
+        if (state == NodeState::LEADER)
+            return false;
+
+        auto leader_stub = FindLeaderStub();
+        if (!leader_stub)
+            return false;
+
+        grpc::ClientContext ctx;
+        ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+        const auto status = call(&ctx, request, response);
+        if (!status.ok())
+            return false;
+        return true;
     }
 
     void ReloadPeersIfChanged()
@@ -703,6 +739,24 @@ public:
 
     Status Get(ServerContext *context, const GetRequest *request, GetResponse *response) override
     {
+        if (state != NodeState::LEADER)
+        {
+            auto leader_stub = FindLeaderStub();
+            if (leader_stub)
+            {
+                GetRequest forwarded = *request;
+                GetResponse forwarded_response;
+                ClientContext ctx;
+                ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+                const auto status = leader_stub->Get(&ctx, forwarded, &forwarded_response);
+                if (status.ok())
+                {
+                    *response = forwarded_response;
+                    return Status::OK;
+                }
+            }
+        }
+
         std::lock_guard<std::mutex> lock(store_mutex);
         auto it = store.find(request->key());
         if (it != store.end())
@@ -719,6 +773,24 @@ public:
 
     Status ListKeys(ServerContext *context, const ListKeysRequest *request, ListKeysResponse *response) override
     {
+        if (state != NodeState::LEADER)
+        {
+            auto leader_stub = FindLeaderStub();
+            if (leader_stub)
+            {
+                ListKeysRequest forwarded;
+                ListKeysResponse forwarded_response;
+                ClientContext ctx;
+                ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+                const auto status = leader_stub->ListKeys(&ctx, forwarded, &forwarded_response);
+                if (status.ok())
+                {
+                    *response = forwarded_response;
+                    return Status::OK;
+                }
+            }
+        }
+
         std::lock_guard<std::mutex> lock(store_mutex);
         std::vector<std::string> keys;
         keys.reserve(store.size());
@@ -748,6 +820,20 @@ public:
     {
         if (state != NodeState::LEADER)
         {
+            auto leader_stub = FindLeaderStub();
+            if (leader_stub)
+            {
+                SetRequest forwarded = *request;
+                SetResponse forwarded_response;
+                ClientContext ctx;
+                ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+                const auto status = leader_stub->Set(&ctx, forwarded, &forwarded_response);
+                if (status.ok())
+                {
+                    response->set_success(forwarded_response.success());
+                    return Status::OK;
+                }
+            }
             response->set_success(false);
             return Status::OK;
         }
@@ -764,6 +850,20 @@ public:
     {
         if (state != NodeState::LEADER)
         {
+            auto leader_stub = FindLeaderStub();
+            if (leader_stub)
+            {
+                DeleteRequest forwarded = *request;
+                DeleteResponse forwarded_response;
+                ClientContext ctx;
+                ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+                const auto status = leader_stub->Delete(&ctx, forwarded, &forwarded_response);
+                if (status.ok())
+                {
+                    response->set_success(forwarded_response.success());
+                    return Status::OK;
+                }
+            }
             response->set_success(false);
             return Status::OK;
         }
