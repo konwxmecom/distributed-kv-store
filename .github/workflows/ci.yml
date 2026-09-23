@@ -48,3 +48,22 @@ jobs:
 
       - name: Run sanitized tests
         run: ctest --test-dir build-sanitized --output-on-failure --timeout 60
+
+  macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install cmake grpc protobuf googletest
+
+      - name: Configure
+        run: cmake -S . -B build-macos -DBUILD_BENCHMARKS=OFF
+
+      - name: Build
+        run: cmake --build build-macos --parallel
+
+      - name: Test
+        run: ctest --test-dir build-macos --output-on-failure --timeout 60
