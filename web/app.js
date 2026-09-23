@@ -1,10 +1,7 @@
-const API_BASE = "http://127.0.0.1:8080/api";
+const configuredGateway = new URLSearchParams(window.location.search).get("api");
+const API_BASE = `${(configuredGateway || "http://127.0.0.1:8080").replace(/\/$/, "")}/api`;
 
-const nodes = [
-  { name: "node-50051", address: "localhost:50051", role: "Leader", icon: "L" },
-  { name: "node-50052", address: "localhost:50052", role: "Follower", icon: "F" },
-  { name: "node-50053", address: "localhost:50053", role: "Follower", icon: "F" }
-];
+let clusterState = null;
 
 let entries = [];
 let activities = [
@@ -29,8 +26,16 @@ function renderEntries() {
 }
 
 function renderNodes() {
-  $("#nodeList").innerHTML = nodes.map((node) => `
-    <div class="node"><span class="node-icon">${node.icon}</span><div class="node-details"><strong>${node.name}</strong><small>${node.address}</small></div><span class="node-state"><i></i>${node.role}</span></div>`).join("");
+  if (!clusterState) {
+    $("#nodeList").innerHTML = '<div class="node-unavailable">Cluster topology is unavailable.</div>';
+    return;
+  }
+  const nodeName = `node-${clusterState.node_id}`;
+  const role = clusterState.is_leader ? "Leader" : "Follower";
+  $("#nodeList").innerHTML = `<div class="node"><span class="node-icon">${clusterState.is_leader ? "L" : "F"}</span><div class="node-details"><strong>${nodeName}</strong><small>gateway target</small></div><span class="node-state"><i></i>${role}</span></div>`;
+  $(".online-count").textContent = clusterState.is_leader ? "leader ready" : `leader node-${clusterState.leader_id}`;
+  $("#commitSummary").textContent = String(clusterState.commit_index);
+  $("#nodeSummary").textContent = role;
 }
 
 function renderActivity() {
@@ -50,12 +55,14 @@ function addActivity(key, action) {
 async function saveEntry(key, value, previousKey = null) {
   const response = await fetch(`${API_BASE}/entry`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value }) });
   if (!response.ok) throw new Error((await response.json()).error || "write failed");
+  if (previousKey && previousKey !== key) {
+    const deleteResponse = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(previousKey)}`, { method: "DELETE" });
+    if (!deleteResponse.ok) throw new Error("new value saved, but old key could not be removed");
+  }
   const index = entries.findIndex((entry) => entry.key === (previousKey || key));
   const entry = { key, value, updated: "just now" };
   if (index >= 0) entries[index] = entry;
   else entries.unshift(entry);
-  rememberKey(key);
-  if (previousKey && previousKey !== key) forgetKey(previousKey);
   addActivity(key, "committed");
   renderEntries();
 }
@@ -81,10 +88,10 @@ $("#dataRows").addEventListener("click", (event) => {
   const deleteKey = event.target.dataset.delete;
   if (editKey) openEditor(editKey);
   if (deleteKey) {
+    if (!window.confirm(`Delete ${deleteKey}? This writes a delete through Raft.`)) return;
     fetch(`${API_BASE}/entry?key=${encodeURIComponent(deleteKey)}`, { method: "DELETE" }).then(async (response) => {
       if (!response.ok) throw new Error((await response.json()).error || "delete failed");
       entries = entries.filter((entry) => entry.key !== deleteKey);
-      forgetKey(deleteKey);
       addActivity(deleteKey, "deleted");
       renderEntries();
     }).catch(showGatewayError);
@@ -139,11 +146,17 @@ async function loadFromGateway() {
     pill.classList.add("connected");
 
     const clusterResponse = await fetch(`${API_BASE}/cluster`);
-    const cluster = await clusterResponse.json();
-    const leaderLabel = cluster.is_leader ? `node-${cluster.node_id}` : `node-${cluster.leader_id || cluster.node_id}`;
+    if (!clusterResponse.ok) throw new Error("cluster status is unavailable");
+    clusterState = await clusterResponse.json();
+    const leaderLabel = clusterState.is_leader ? `node-${clusterState.node_id}` : `node-${clusterState.leader_id || clusterState.node_id}`;
     $("#heroLeader").textContent = leaderLabel;
-    $("#termMetric").textContent = String(cluster.current_term ?? 0);
-    $("#commitMetric").textContent = String(cluster.commit_index ?? 0);
+    $("#leaderMeta").innerHTML = `<i></i> ${clusterState.is_leader ? "healthy · leader" : "healthy · follower"} · term ${clusterState.current_term}`;
+    $("#termMetric").textContent = String(clusterState.current_term ?? 0);
+    $("#commitMetric").textContent = String(clusterState.commit_index ?? 0);
+    $("#healthMetric").textContent = clusterState.is_leader ? "Ready" : "Follower";
+    $("#healthDetail").textContent = `node-${clusterState.node_id} responding`;
+    $("#snapshotMetric").textContent = "Live";
+    renderNodes();
 
     const keysResponse = await fetch(`${API_BASE}/keys`);
     if (!keysResponse.ok) throw new Error("could not list keys from cluster");
@@ -157,11 +170,16 @@ async function loadFromGateway() {
     }));
     entries = values.filter(Boolean);
     renderEntries();
-    $("#formNote").textContent = "Connected to the Raft gateway.";
+    $("#formNote").textContent = clusterState.is_leader ? "Connected. Writes are ready." : `Connected. Write through node-${clusterState.leader_id}.`;
   } catch (error) {
+    clusterState = null;
     pill.innerHTML = '<span class="pulse"></span> Gateway offline';
     pill.classList.remove("connected");
     $("#formNote").textContent = "Start gateway.py to connect this console to the cluster.";
+    $("#healthMetric").textContent = "Offline";
+    $("#healthDetail").textContent = "Gateway unavailable";
+    $("#snapshotMetric").textContent = "Unknown";
+    renderNodes();
     renderEntries();
   }
 }
