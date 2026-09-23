@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+option(BUILD_BENCHMARKS "Build the end-to-end benchmark client" ON)
 
 if(ENABLE_ASAN)
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
@@ -69,6 +70,15 @@ add_executable(runtime_config_tests
     tests/test_runtime_config.cpp
     runtime_config.cpp
 )
+
+if(BUILD_BENCHMARKS)
+    add_executable(kvstore_benchmark
+        benchmarks/kvstore_benchmark.cpp
+        kvstore.pb.cc
+        kvstore.grpc.pb.cc
+    )
+    target_link_libraries(kvstore_benchmark PRIVATE gRPC::grpc++ protobuf::libprotobuf)
+endif()
 
 target_link_libraries(raft_tests
     PRIVATE
