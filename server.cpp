@@ -16,6 +16,7 @@
 
 #include <grpcpp/grpcpp.h>
 #include "kvstore.grpc.pb.h"
+#include "runtime_config.h"
 
 using grpc::ClientContext;
 using grpc::Server;
@@ -778,11 +779,12 @@ public:
 
 void RunServer(const std::string &port, const std::vector<std::string> &peer_addresses,
                const std::vector<int> &peer_ids, const TlsConfig &tls_config,
-               const std::filesystem::path &membership_path)
+               const std::filesystem::path &membership_path,
+               const std::filesystem::path &data_root)
 {
     std::string server_address = "0.0.0.0:" + port;
     KVStoreServiceImpl service(std::stoi(port), peer_addresses, peer_ids,
-                               std::filesystem::path("data") / ("node_" + port), tls_config,
+                               data_root / ("node_" + port), tls_config,
                                membership_path);
 
     ServerBuilder builder;
@@ -821,22 +823,70 @@ void RunServer(const std::string &port, const std::vector<std::string> &peer_add
 
 int main(int argc, char **argv)
 {
-    // Usage: server.exe <port> <peer1_port> <peer2_port> ...
-    // All nodes are started symmetrically; the cluster elects its own leader.
+    // Usage: server.exe <port> <peer1_port> <peer2_port> ... [options]
+    // Or: server.exe --config node.conf
     if (argc < 2)
     {
-        std::cout << "Usage: server.exe <port> <peer1_port> <peer2_port> ..." << std::endl;
+        std::cout << "Usage: server.exe <port> <peer1_port> <peer2_port> ... [options]" << std::endl;
         return 1;
     }
 
-    std::string port = argv[1];
+    RuntimeConfig runtime_config;
+    std::filesystem::path config_path;
+    for (int i = 1; i + 1 < argc; ++i)
+    {
+        if (std::string(argv[i]) == "--config")
+        {
+            config_path = argv[i + 1];
+            break;
+        }
+    }
+    if (!config_path.empty())
+        runtime_config = LoadRuntimeConfig(config_path);
+
+    std::string port = runtime_config.port;
     std::vector<std::string> peer_addresses;
     std::vector<int> peer_ids;
     TlsConfig tls_config;
-    std::filesystem::path membership_path;
+    std::filesystem::path membership_path = runtime_config.peers_file;
+    std::filesystem::path data_root = runtime_config.data_root;
+    tls_config.ca_file = runtime_config.ca_file;
+    tls_config.certificate_file = runtime_config.certificate_file;
+    tls_config.private_key_file = runtime_config.private_key_file;
 
-    for (int i = 2; i < argc; i++)
+    auto add_peer = [&](const std::string &peer) {
+        const auto separator = peer.rfind(':');
+        const auto address = separator == std::string::npos ? "localhost:" + peer : peer;
+        peer_addresses.push_back(address);
+        peer_ids.push_back(separator == std::string::npos ? std::stoi(peer) : std::stoi(peer.substr(separator + 1)));
+    };
+    for (const auto &peer : runtime_config.peers)
+        add_peer(peer);
+
+    int argument_index = 1;
+    if (std::string(argv[1]) != "--config")
     {
+        port = argv[1];
+        argument_index = 2;
+    }
+    if (port.empty())
+    {
+        std::cerr << "A port is required either as an argument or in --config." << std::endl;
+        return 1;
+    }
+
+    for (int i = argument_index; i < argc; i++)
+    {
+        if (std::string(argv[i]) == "--config" && i + 1 < argc)
+        {
+            ++i;
+            continue;
+        }
+        if (std::string(argv[i]) == "--data-root" && i + 1 < argc)
+        {
+            data_root = argv[++i];
+            continue;
+        }
         if (std::string(argv[i]) == "--ca" && i + 1 < argc)
         {
             tls_config.ca_file = argv[++i];
@@ -857,12 +907,11 @@ int main(int argc, char **argv)
             membership_path = argv[++i];
             continue;
         }
-        peer_addresses.push_back("localhost:" + std::string(argv[i]));
-        peer_ids.push_back(std::stoi(argv[i]));
+        add_peer(argv[i]);
     }
 
     if (tls_config.Enabled())
         std::cout << "TLS/mTLS enabled" << std::endl;
-    RunServer(port, peer_addresses, peer_ids, tls_config, membership_path);
+    RunServer(port, peer_addresses, peer_ids, tls_config, membership_path, data_root);
     return 0;
 }
