@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 #include <string>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -36,23 +37,50 @@ std::string ResolveServerBinary() {
     return "server";
 }
 
-void WaitForServer(const std::string& address, int timeout_seconds = 20) {
+bool WaitForServer(const std::string& address, int timeout_seconds = 20) {
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
     while (std::chrono::steady_clock::now() < deadline) {
-        auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
-        kvstore::KVStore::Stub stub(channel);
         kvstore::HeartbeatRequest req;
         req.set_leader_port(0);
         req.set_leader_term(0);
         kvstore::HeartbeatResponse resp;
         grpc::ClientContext context;
-        auto status = stub.Heartbeat(&context, req, &resp);
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+        const auto status = stub.Heartbeat(&context, req, &resp);
         if (status.ok() && resp.alive()) {
-            return;
+            return true;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
-    FAIL() << "server at " << address << " did not become ready";
+    return false;
+}
+
+bool WaitForLeader(const std::string& address, int timeout_seconds = 10) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+    while (std::chrono::steady_clock::now() < deadline) {
+        kvstore::SetRequest req;
+        req.set_key("__raft_test_readiness__");
+        req.set_value("ready");
+        kvstore::SetResponse resp;
+        grpc::ClientContext context;
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+        const auto status = stub.Set(&context, req, &resp);
+        if (status.ok() && resp.success()) {
+            kvstore::DeleteRequest delete_req;
+            delete_req.set_key("__raft_test_readiness__");
+            kvstore::DeleteResponse delete_resp;
+            grpc::ClientContext delete_context;
+            delete_context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+            stub.Delete(&delete_context, delete_req, &delete_resp);
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    return false;
 }
 
 pid_t StartServer(const std::string& port, const std::vector<std::string>& peers) {
@@ -85,12 +113,29 @@ void StopServer(pid_t pid) {
     }
 }
 
+struct TestServer {
+    explicit TestServer(const std::string& port)
+        : port(port), pid(-1) {
+        std::error_code error;
+        std::filesystem::remove_all(std::filesystem::path("data") / ("node_" + port), error);
+        pid = StartServer(port, {});
+    }
+
+    ~TestServer() {
+        StopServer(pid);
+    }
+
+    std::string port;
+    pid_t pid;
+};
+
 TEST(RaftIntegration, LeaderSetAndGetRoundTrip) {
     const std::string port = "18051";
     const std::string address = "localhost:" + port;
-    const auto pid = StartServer(port, {});
-    ASSERT_GT(pid, 0);
-    WaitForServer(address);
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
 
     auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
     kvstore::KVStore::Stub stub(channel);
@@ -113,15 +158,15 @@ TEST(RaftIntegration, LeaderSetAndGetRoundTrip) {
     ASSERT_TRUE(get_resp.found());
     EXPECT_EQ(get_resp.value(), "beta");
 
-    StopServer(pid);
 }
 
 TEST(RaftIntegration, DeleteRemovesKey) {
     const std::string port = "18052";
     const std::string address = "localhost:" + port;
-    const auto pid = StartServer(port, {});
-    ASSERT_GT(pid, 0);
-    WaitForServer(address);
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
 
     auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
     kvstore::KVStore::Stub stub(channel);
@@ -151,7 +196,50 @@ TEST(RaftIntegration, DeleteRemovesKey) {
     ASSERT_TRUE(get_status.ok());
     EXPECT_FALSE(get_resp.found());
 
-    StopServer(pid);
+}
+
+TEST(RaftIntegration, ListsKeysAndReportsClusterStatus) {
+    const std::string port = "18053";
+    const std::string address = "localhost:" + port;
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+
+    for (const auto& entry : {std::pair{"first", "one"}, std::pair{"second", "two"}}) {
+        kvstore::SetRequest set_req;
+        set_req.set_key(entry.first);
+        set_req.set_value(entry.second);
+        kvstore::SetResponse set_resp;
+        grpc::ClientContext set_ctx;
+        const auto set_status = stub.Set(&set_ctx, set_req, &set_resp);
+        ASSERT_TRUE(set_status.ok());
+        ASSERT_TRUE(set_resp.success());
+    }
+
+    kvstore::ListKeysRequest list_req;
+    kvstore::ListKeysResponse list_resp;
+    grpc::ClientContext list_ctx;
+    const auto list_status = stub.ListKeys(&list_ctx, list_req, &list_resp);
+    ASSERT_TRUE(list_status.ok());
+    ASSERT_EQ(list_resp.keys_size(), 2);
+    EXPECT_NE(std::find(list_resp.keys().begin(), list_resp.keys().end(), "first"), list_resp.keys().end());
+    EXPECT_NE(std::find(list_resp.keys().begin(), list_resp.keys().end(), "second"), list_resp.keys().end());
+
+    kvstore::ClusterStatusRequest status_req;
+    kvstore::ClusterStatusResponse status_resp;
+    grpc::ClientContext status_ctx;
+    const auto status = stub.GetClusterStatus(&status_ctx, status_req, &status_resp);
+    ASSERT_TRUE(status.ok());
+    EXPECT_EQ(status_resp.node_id(), std::stoi(port));
+    EXPECT_EQ(status_resp.leader_id(), std::stoi(port));
+    EXPECT_GE(status_resp.current_term(), 0);
+    EXPECT_GE(status_resp.commit_index(), 2);
+    EXPECT_TRUE(status_resp.is_leader());
+
 }
 
 }  // namespace
