@@ -26,4 +26,25 @@ jobs:
 
       - name: Run tests
         run: |
-          ctest --test-dir build --output-on-failure
+          ctest --test-dir build --output-on-failure --timeout 60
+
+  sanitizer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libprotobuf-dev protobuf-compiler libgrpc++-dev libgrpc-dev protobuf-compiler-grpc libgtest-dev
+
+      - name: Configure with AddressSanitizer and UndefinedBehaviorSanitizer
+        run: cmake -S . -B build-sanitized -DENABLE_ASAN=ON -DENABLE_UBSAN=ON
+
+      - name: Build sanitized targets
+        run: cmake --build build-sanitized -j$(nproc)
+
+      - name: Run sanitized tests
+        run: ctest --test-dir build-sanitized --output-on-failure --timeout 60
