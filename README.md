@@ -46,6 +46,17 @@ Writes flow through a **replicated log**: an entry is first appended locally, th
 
 See [SETUP.md](./SETUP.md) for full, step-by-step instructions on setting up the toolchain, building the project, and running a multi-node cluster.
 
+### Linux and macOS
+
+Install CMake, a C++17 compiler, gRPC, Protocol Buffers, and GoogleTest from the
+platform package manager, then use the same portable commands:
+
+```bash
+cmake -S . -B build
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
 ### Quick overview
 
 ```powershell
