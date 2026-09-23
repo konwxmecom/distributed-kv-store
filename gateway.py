@@ -112,6 +112,21 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 self._send(503, {"connected": False, "error": error.details()})
             return
 
+        if parsed.path == "/ready":
+            try:
+                response = self.stub.GetClusterStatus(self.pb2.ClusterStatusRequest(), timeout=2)
+                ready = response.is_leader
+                self._record_metric("health", 200 if ready else 503)
+                self._send(200 if ready else 503, {
+                    "status": "ready" if ready else "not_ready",
+                    "leader_id": response.leader_id,
+                    "current_term": response.current_term,
+                })
+            except grpc.RpcError as error:
+                self._record_metric("health", 503)
+                self._send(503, {"status": "not_ready", "error": error.details()})
+            return
+
         if parsed.path == "/api/keys":
             try:
                 response = self.stub.ListKeys(self.pb2.ListKeysRequest(), timeout=5)
