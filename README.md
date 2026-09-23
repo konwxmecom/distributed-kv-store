@@ -14,6 +14,7 @@ A distributed key-value store built from scratch in C++, implementing the **Raft
 - **Snapshots and compaction** — committed state is periodically snapshotted to bound WAL growth
 - **Optional mutual TLS** — client and peer connections can require verified certificates
 - **Reloadable membership** — peer endpoints can be changed through a watched configuration file
+- **Operator console** — a responsive browser dashboard for inspecting keys and cluster activity
 
 ## Architecture
 
@@ -108,6 +109,19 @@ localhost:50053
 ```powershell
 .\build\Debug\server.exe 50051 --peers-file peers-50051.txt
 ```
+
+## Operator console
+
+The `web/` directory contains a lightweight dashboard for exploring the store from a browser.
+It currently runs in local demo mode, so its mutations stay in the browser. The layout is
+ready to connect to a REST or WebSocket gateway in front of the gRPC service.
+
+```powershell
+python -m http.server 4173 --directory web
+```
+
+Open `http://localhost:4173` after starting the server. The console includes a key browser,
+local CRUD controls, node topology, replication summary, and recent Raft activity.
 
 ## License
 

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Raft KV Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Raft KV Console home">
+        <span class="brand-mark">R</span>
+        <span><strong>Raft KV</strong><small>control console</small></span>
+      </a>
+      <div class="topbar-actions">
+        <span class="mode-pill"><span class="pulse"></span> Demo cluster</span>
+        <button class="icon-button" id="refreshButton" title="Refresh dashboard" aria-label="Refresh dashboard">↻</button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Distributed key-value store</p>
+          <h1>See consensus<br><em>in motion.</em></h1>
+          <p class="hero-copy">A compact window into your Raft cluster. Watch leadership, inspect replicated data, and test writes without leaving the console.</p>
+        </div>
+        <div class="hero-stamp">
+          <span class="stamp-label">Current leader</span>
+          <strong id="heroLeader">node-50051</strong>
+          <span class="stamp-meta"><i></i> healthy · term 18</span>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Cluster metrics">
+        <article class="metric-card accent-green"><span class="metric-label">Cluster health</span><strong>Healthy</strong><small>3 / 3 nodes responding</small></article>
+        <article class="metric-card"><span class="metric-label">Current term</span><strong id="termMetric">18</strong><small>last election 4m ago</small></article>
+        <article class="metric-card"><span class="metric-label">Committed entries</span><strong id="commitMetric">248</strong><small>99.8% replicated</small></article>
+        <article class="metric-card accent-yellow"><span class="metric-label">Snapshot</span><strong>92%</strong><small>next compaction in 20 entries</small></article>
+      </section>
+
+      <div class="content-grid">
+        <section class="panel data-panel">
+          <div class="panel-heading">
+            <div><p class="section-kicker">State machine</p><h2>Key-value data</h2></div>
+            <button class="primary-button" id="newEntryButton"><span>＋</span> New entry</button>
+          </div>
+          <div class="search-row">
+            <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search keys or values" autocomplete="off"></label>
+            <span class="result-count" id="resultCount">4 keys</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Key</th><th>Value</th><th>Last updated</th><th>Status</th><th></th></tr></thead>
+              <tbody id="dataRows"></tbody>
+            </table>
+            <div class="empty-state" id="emptyState" hidden>No keys match this search.</div>
+          </div>
+        </section>
+
+        <aside class="panel cluster-panel">
+          <div class="panel-heading compact"><div><p class="section-kicker">Topology</p><h2>Cluster nodes</h2></div><span class="online-count">3 online</span></div>
+          <div class="node-list" id="nodeList"></div>
+          <div class="panel-divider"></div>
+          <div class="replication-summary"><div><span>Replication lag</span><strong>0 ms</strong></div><div><span>Quorum</span><strong>2 / 3</strong></div></div>
+        </aside>
+
+        <section class="panel activity-panel">
+          <div class="panel-heading compact"><div><p class="section-kicker">Live feed</p><h2>Recent activity</h2></div><span class="live-label"><i></i> live</span></div>
+          <div class="activity-list" id="activityList"></div>
+        </section>
+
+        <section class="panel command-panel">
+          <div class="panel-heading compact"><div><p class="section-kicker">Write path</p><h2>Try a mutation</h2></div><span class="leader-tag">leader only</span></div>
+          <form id="entryForm">
+            <label>Key<input id="keyInput" required maxlength="64" placeholder="e.g. feature.flag"></label>
+            <label>Value<textarea id="valueInput" required maxlength="240" rows="3" placeholder="Value replicated through Raft"></textarea></label>
+            <button class="submit-button" type="submit">Append to log <span>→</span></button>
+          </form>
+          <p class="form-note" id="formNote">Writes are simulated locally in this console.</p>
+        </section>
+      </div>
+    </main>
+    <footer><span>Raft KV Console</span><span>Built for inspection, not guesswork.</span></footer>
+  </div>
+  <dialog id="editDialog">
+    <form method="dialog" id="editForm" class="dialog-card">
+      <button class="close-button" value="cancel" aria-label="Close dialog">×</button>
+      <p class="section-kicker">State machine</p><h2 id="dialogTitle">New entry</h2>
+      <label>Key<input id="dialogKey" required maxlength="64"></label>
+      <label>Value<textarea id="dialogValue" required maxlength="240" rows="4"></textarea></label>
+      <div class="dialog-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="submit-button" value="default">Save entry <span>→</span></button></div>
+    </form>
+  </dialog>
+  <script src="app.js"></script>
+</body>
+</html>
