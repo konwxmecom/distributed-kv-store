@@ -19,15 +19,20 @@
 namespace {
 
 std::string ResolveServerBinary() {
-    std::filesystem::path root = std::filesystem::current_path();
-    std::filesystem::path candidate = root / "server";
-    if (std::filesystem::exists(candidate)) {
-        return candidate.string();
+    std::vector<std::filesystem::path> candidates = {
+        std::filesystem::current_path() / "server",
+        std::filesystem::current_path() / "build" / "server",
+        std::filesystem::current_path().parent_path() / "build" / "server",
+        std::filesystem::current_path() / "build" / "DistributedKVStore" / "server",
+        std::filesystem::current_path() / "build" / "src" / "server"
+    };
+
+    for (const auto& candidate : candidates) {
+        if (std::filesystem::exists(candidate)) {
+            return candidate.string();
+        }
     }
-    candidate = root.parent_path() / "build" / "server";
-    if (std::filesystem::exists(candidate)) {
-        return candidate.string();
-    }
+
     return "server";
 }
 
