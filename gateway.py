@@ -86,13 +86,16 @@ class GatewayHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _read_json(self):
+        return json.loads(self._read_body() or b"{}")
+
+    def _read_body(self):
         length = int(self.headers.get("Content-Length", "0"))
-        return json.loads(self.rfile.read(length) or b"{}")
+        return self.rfile.read(length)
 
     def do_OPTIONS(self):
         self.send_response(204)
         self._send_cors_headers()
-        self.send_header("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
@@ -188,6 +191,23 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
         self._send(404, {"error": "not found"})
 
+    def do_POST(self):
+        if urlparse(self.path).path != "/api/entry":
+            self._send(404, {"error": "not found"})
+            return
+        origin = self.headers.get("Origin")
+        if origin and origin not in self.allowed_origins:
+            self._send(403, {"error": "origin is not allowed"})
+            return
+        try:
+            body = parse_qs(self._read_body().decode("utf-8"), keep_blank_values=True)
+            key = body.get("key", [""])[0].strip()
+            value = body.get("value", [""])[0]
+            self._set_entry(key, value)
+        except (UnicodeDecodeError, ValueError) as error:
+            self._record_metric("set", 400)
+            self._send(400, {"error": str(error)})
+
     def do_PUT(self):
         if urlparse(self.path).path != "/api/entry":
             self._send(404, {"error": "not found"})
@@ -195,10 +215,17 @@ class GatewayHandler(BaseHTTPRequestHandler):
         try:
             body = self._read_json()
             key, value = str(body.get("key", "")).strip(), str(body.get("value", ""))
-            if not key or not value:
-                self._record_metric("set", 400)
-                self._send(400, {"error": "key and value are required"})
-                return
+            self._set_entry(key, value)
+        except (TypeError, json.JSONDecodeError) as error:
+            self._record_metric("set", 400)
+            self._send(400, {"error": str(error)})
+
+    def _set_entry(self, key, value):
+        if not key or not value:
+            self._record_metric("set", 400)
+            self._send(400, {"error": "key and value are required"})
+            return
+        try:
             response = self.stub.Set(self.pb2.SetRequest(key=key, value=value), timeout=5)
             if not response.success:
                 self._record_metric("set", 409)
@@ -209,9 +236,6 @@ class GatewayHandler(BaseHTTPRequestHandler):
         except grpc.RpcError as error:
             self._record_metric("set", 502)
             self._send(502, {"success": False, "error": error.details()})
-        except (TypeError, json.JSONDecodeError) as error:
-            self._record_metric("set", 400)
-            self._send(400, {"error": str(error)})
 
     def do_DELETE(self):
         parsed = urlparse(self.path)

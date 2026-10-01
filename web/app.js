@@ -57,7 +57,7 @@ function addActivity(key, action) {
 }
 
 async function saveEntry(key, value, previousKey = null) {
-  const response = await fetch(`${API_BASE}/entry`, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value }) });
+  const response = await fetch(`${API_BASE}/entry`, { method: "POST", credentials: "include", body: new URLSearchParams({ key, value }) });
   if (!response.ok) throw new Error((await response.json()).error || "write failed");
   if (previousKey && previousKey !== key) {
     const deleteResponse = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(previousKey)}`, { method: "DELETE", credentials: "include" });
