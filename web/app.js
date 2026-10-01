@@ -6,6 +6,7 @@ const defaultGateway = forwardedGatewayHost !== window.location.hostname
 const API_BASE = `${(configuredGateway || defaultGateway).replace(/\/$/, "")}/api`;
 
 let clusterState = null;
+let clusterNodes = [];
 
 let entries = [];
 let activities = [
@@ -34,10 +35,18 @@ function renderNodes() {
     $("#nodeList").innerHTML = '<div class="node-unavailable">Cluster topology is unavailable.</div>';
     return;
   }
-  const nodeName = `node-${clusterState.node_id}`;
-  const role = clusterState.is_leader ? "Leader" : "Follower";
-  $("#nodeList").innerHTML = `<div class="node"><span class="node-icon">${clusterState.is_leader ? "L" : "F"}</span><div class="node-details"><strong>${nodeName}</strong><small>gateway target</small></div><span class="node-state"><i></i>${role}</span></div>`;
-  $(".online-count").textContent = clusterState.is_leader ? "leader ready" : `leader node-${clusterState.leader_id}`;
+  if (!clusterNodes.length) {
+    clusterNodes = [{ node_id: clusterState.node_id, reachable: true, is_leader: clusterState.is_leader, current_term: clusterState.current_term }];
+  }
+  const onlineCount = clusterNodes.filter((node) => node.reachable).length;
+  const leaderNode = clusterNodes.find((node) => node.is_leader);
+  const role = leaderNode ? `Leader node-${leaderNode.node_id}` : "Leader unavailable";
+  $("#nodeList").innerHTML = clusterNodes.map((node) => {
+    const nodeRole = !node.reachable ? "Offline" : node.is_leader ? "Leader" : "Follower";
+    const nodeId = node.node_id > 0 ? `node-${node.node_id}` : escapeHtml(node.address || "unknown");
+    return `<div class="node"><span class="node-icon">${node.reachable ? (node.is_leader ? "L" : "F") : "!"}</span><div class="node-details"><strong>${nodeId}</strong><small>${nodeRole} · term ${node.current_term ?? "—"}</small></div><span class="node-state"><i></i>${node.reachable ? "online" : "offline"}</span></div>`;
+  }).join("");
+  $(".online-count").textContent = `${onlineCount}/${clusterNodes.length} online`;
   $("#commitSummary").textContent = String(clusterState.commit_index);
   $("#nodeSummary").textContent = role;
 }
