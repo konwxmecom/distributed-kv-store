@@ -357,20 +357,18 @@ The gateway must be forwarded publicly or privately according to the environment
 
 ## 12. Stop the Demo Services
 
-The launcher runs services in the background. To stop only the project demo processes:
+The launcher runs services in the background. Stop the project stack with:
 
 ```bash
-pkill -f './build/server 50051 50052 50053' || true
-pkill -f './build/server 50052 50051 50053' || true
-pkill -f './build/server 50053 50051 50052' || true
-pkill -f 'python3 gateway.py' || true
-pkill -f 'python3 -m http.server 4173' || true
+./stop.sh
 ```
 
-Check ports before starting again:
+This stops Raft nodes, the gateway, and the dashboard server launched from this repository; it preserves data under `RUNTIME_DATA`.
+
+To start the default stack again:
 
 ```bash
-ss -ltn | grep -E ':5005[123]|:8080|:4173' || true
+./start.sh
 ```
 
 ## 13. Troubleshooting
