@@ -18,6 +18,10 @@
       </a>
       <div class="topbar-actions">
         <span class="mode-pill" id="connectionPill"><span class="pulse"></span> Connecting…</span>
+        <button class="icon-button" id="backupButton" type="button" title="Download backup" aria-label="Download backup">↓</button>
+        <button class="icon-button" id="restoreButton" type="button" title="Restore backup" aria-label="Restore backup">↑</button>
+        <input id="restoreInput" type="file" accept="application/json,.json" hidden>
+        <button class="icon-button" id="accountButton" type="button" title="Sign out" aria-label="Sign out" hidden>↪</button>
         <button class="icon-button" id="refreshButton" title="Refresh dashboard" aria-label="Refresh dashboard">↻</button>
       </div>
     </header>
