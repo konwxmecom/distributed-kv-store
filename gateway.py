@@ -324,35 +324,102 @@ class GatewayHandler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
     def do_POST(self):
-        if urlparse(self.path).path != "/api/entry":
-            self._send(404, {"error": "not found"})
-            return
-        origin = self.headers.get("Origin")
-        if origin and origin not in self.allowed_origins:
+        path = urlparse(self.path).path
+        if not self._origin_allowed():
             self._send(403, {"error": "origin is not allowed"})
+            return
+        if path == "/api/login":
+            if not self.users:
+                self._send(400, {"error": "authentication is not configured"})
+                return
+            try:
+                form = parse_qs(self._read_body().decode("utf-8"), keep_blank_values=True)
+                username = form.get("username", [""])[0]
+                password = form.get("password", [""])[0]
+            except (UnicodeDecodeError, ValueError):
+                username, password = "", ""
+            record = self.users.get(username)
+            if not record or not verify_password(record, password):
+                self._record_metric("auth_failure", 401)
+                self._send(401, {"error": "invalid username or password"})
+                return
+            token = issue_session(username, self.session_secret)
+            secure = "; Secure" if self.headers.get("Origin", "").startswith("https://") else ""
+            cookie = f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_TTL_SECONDS}{secure}"
+            self._send(200, {"user": username}, (("Set-Cookie", cookie),))
+            return
+        if path == "/api/logout":
+            self._send(200, {"success": True}, (("Set-Cookie", f"{SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"),))
+            return
+        username = self._require_user()
+        if username is None:
+            return
+        if path == "/api/restore":
+            try:
+                form = parse_qs(self._read_body().decode("utf-8"), keep_blank_values=True)
+                backup = json.loads(form.get("backup", [""])[0])
+                if not isinstance(backup, dict) or backup.get("format") != "raft-kv-backup-v1":
+                    raise ValueError("unsupported backup format")
+                entries = backup.get("entries")
+                if not isinstance(entries, dict):
+                    raise ValueError("backup entries must be an object")
+                if len(entries) > 10_000:
+                    raise ValueError("backup contains too many entries")
+                if self.users and backup.get("user") != username:
+                    self._send(403, {"error": "backup belongs to a different user"})
+                    return
+                failures = []
+                for key, value in entries.items():
+                    if not isinstance(key, str) or not key or not isinstance(value, str):
+                        failures.append(str(key))
+                        continue
+                    stored_key = self._storage_key(username, key)
+                    response = self.stub.Set(self.pb2.SetRequest(key=stored_key, value=value), timeout=5)
+                    if not response.success:
+                        failures.append(key)
+                self._record_metric("restore", 200 if not failures else 409)
+                self._send(200 if not failures else 409, {"restored": len(entries) - len(failures), "failed_keys": failures})
+            except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+                self._record_metric("restore", 400)
+                self._send(400, {"error": str(error)})
+            except grpc.RpcError as error:
+                self._record_metric("restore", 502)
+                self._send(502, {"error": error.details()})
+            return
+        if path != "/api/entry":
+            self._send(404, {"error": "not found"})
             return
         try:
             body = parse_qs(self._read_body().decode("utf-8"), keep_blank_values=True)
             key = body.get("key", [""])[0].strip()
+            if body.get("action", ["set"])[0] == "delete":
+                self._delete_entry(username, key)
+                return
             value = body.get("value", [""])[0]
-            self._set_entry(key, value)
+            self._set_entry(self._storage_key(username, key), value, key)
         except (UnicodeDecodeError, ValueError) as error:
             self._record_metric("set", 400)
             self._send(400, {"error": str(error)})
 
     def do_PUT(self):
+        if not self._origin_allowed():
+            self._send(403, {"error": "origin is not allowed"})
+            return
+        username = self._require_user()
+        if username is None:
+            return
         if urlparse(self.path).path != "/api/entry":
             self._send(404, {"error": "not found"})
             return
         try:
             body = self._read_json()
             key, value = str(body.get("key", "")).strip(), str(body.get("value", ""))
-            self._set_entry(key, value)
-        except (TypeError, json.JSONDecodeError) as error:
+            self._set_entry(self._storage_key(username, key), value, key)
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
             self._record_metric("set", 400)
             self._send(400, {"error": str(error)})
 
-    def _set_entry(self, key, value):
+    def _set_entry(self, key, value, display_key):
         if not key or not value:
             self._record_metric("set", 400)
             self._send(400, {"error": "key and value are required"})
@@ -364,28 +431,59 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 self._send(409, {"success": False, "error": "write was not committed"})
                 return
             self._record_metric("set", 200)
-            self._send(200, {"success": True, "key": key, "value": value})
+            self._send(200, {"success": True, "key": display_key, "value": value})
         except grpc.RpcError as error:
             self._record_metric("set", 502)
             self._send(502, {"success": False, "error": error.details()})
 
-    def do_DELETE(self):
-        parsed = urlparse(self.path)
-        key = parse_qs(parsed.query).get("key", [""])[0]
-        if parsed.path != "/api/entry" or not key:
+    def _delete_entry(self, username, key):
+        if not key:
             self._record_metric("delete", 400)
             self._send(400, {"error": "key is required"})
             return
         try:
-            response = self.stub.Delete(self.pb2.DeleteRequest(key=key), timeout=5)
+            response = self.stub.Delete(self.pb2.DeleteRequest(key=self._storage_key(username, key)), timeout=5)
+            if not response.success:
+                self._record_metric("delete", 409)
+                self._send(409, {"success": False, "error": "delete was not committed"})
+                return
             self._record_metric("delete", 200)
-            self._send(200, {"success": response.success, "key": key})
+            self._send(200, {"success": True, "key": key})
         except grpc.RpcError as error:
             self._record_metric("delete", 502)
             self._send(502, {"success": False, "error": error.details()})
 
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        if not self._origin_allowed():
+            self._send(403, {"error": "origin is not allowed"})
+            return
+        username = self._require_user()
+        if username is None:
+            return
+        key = parse_qs(parsed.query).get("key", [""])[0]
+        if parsed.path != "/api/entry":
+            self._send(404, {"error": "not found"})
+            return
+        self._delete_entry(username, key)
+
     def log_message(self, format, *args):
         print(f"[gateway] {self.address_string()} - {format % args}")
+
+    def _read_node_status(self, node):
+        address, stub = node
+        try:
+            status = stub.GetClusterStatus(self.pb2.ClusterStatusRequest(), timeout=1)
+            return {
+                "address": address,
+                "node_id": status.node_id,
+                "reachable": True,
+                "is_leader": status.is_leader,
+                "current_term": status.current_term,
+                "commit_index": status.commit_index,
+            }
+        except grpc.RpcError:
+            return {"address": address, "node_id": -1, "reachable": False, "is_leader": False}
 
 
 def main():
