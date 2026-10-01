@@ -100,6 +100,16 @@
       <div class="dialog-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="submit-button" value="default">Save entry <span>→</span></button></div>
     </form>
   </dialog>
+  <dialog id="loginDialog">
+    <form id="loginForm" class="dialog-card">
+      <p class="section-kicker">Raft KV account</p>
+      <h2>Sign in</h2>
+      <label>Username<input id="loginUsername" required maxlength="64" autocomplete="username"></label>
+      <label>Password<input id="loginPassword" type="password" required autocomplete="current-password"></label>
+      <p class="form-note" id="loginNote">Sign in to access your isolated keys.</p>
+      <button class="submit-button" type="submit">Sign in <span>→</span></button>
+    </form>
+  </dialog>
   <script src="app.js"></script>
 </body>
 </html>
