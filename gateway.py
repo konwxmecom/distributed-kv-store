@@ -2,13 +2,20 @@
 """Small HTTP gateway for the KVStore gRPC service."""
 
 import argparse
+import base64
+from concurrent.futures import ThreadPoolExecutor
+import hashlib
+import hmac
 import json
 import os
 import pathlib
+import re
+import secrets
 import subprocess
 import sys
 import tempfile
 import time
+from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -23,15 +30,81 @@ REQUEST_COUNTERS = {
     "delete": 0,
     "health": 0,
     "cluster": 0,
+    "backup": 0,
+    "restore": 0,
+    "auth_failure": 0,
 }
+PASSWORD_ITERATIONS = 310_000
+SESSION_COOKIE = "raft_session"
+SESSION_TTL_SECONDS = 8 * 60 * 60
+MAX_REQUEST_BYTES = 10 * 1024 * 1024
+
+
+def create_password_record(password):
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PASSWORD_ITERATIONS)
+    return {
+        "salt": base64.b64encode(salt).decode("ascii"),
+        "digest": base64.b64encode(digest).decode("ascii"),
+        "iterations": PASSWORD_ITERATIONS,
+    }
+
+
+def load_users(path):
+    users_path = Path(path)
+    if os.name == "posix" and users_path.stat().st_mode & 0o077:
+        raise ValueError("users file must be private (chmod 600)")
+    users = json.loads(users_path.read_text(encoding="utf-8"))
+    if not isinstance(users, dict) or not users:
+        raise ValueError("users file must contain at least one user")
+    for username, record in users.items():
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", username):
+            raise ValueError(f"invalid username in users file: {username!r}")
+        if not isinstance(record, dict) or not {"salt", "digest", "iterations"} <= record.keys():
+            raise ValueError(f"invalid password record for user {username!r}")
+    return users
+
+
+def verify_password(record, password):
+    try:
+        salt = base64.b64decode(record["salt"], validate=True)
+        expected = base64.b64decode(record["digest"], validate=True)
+        iterations = int(record["iterations"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    if not 100_000 <= iterations <= 2_000_000:
+        return False
+    actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return hmac.compare_digest(actual, expected)
+
+
+def issue_session(username, secret):
+    expires = int(time.time()) + SESSION_TTL_SECONDS
+    payload = f"{username}:{expires}"
+    signature = hmac.new(secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return base64.urlsafe_b64encode(f"{payload}:{signature}".encode("utf-8")).decode("ascii").rstrip("=")
+
+
+def read_session(token, secret, users):
+    try:
+        padded = token + "=" * (-len(token) % 4)
+        payload = base64.urlsafe_b64decode(padded).decode("utf-8")
+        username, expires, signature = payload.rsplit(":", 2)
+        expected = hmac.new(secret, f"{username}:{expires}".encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected) or int(expires) <= int(time.time()):
+            return None
+        return username if username in users else None
+    except (ValueError, UnicodeDecodeError):
+        return None
 
 
 def dashboard_origins():
-    origins = {"http://localhost:4173", "http://127.0.0.1:4173"}
+    ui_port = os.environ.get("UI_PORT", "4173")
+    origins = {f"http://localhost:{ui_port}", f"http://127.0.0.1:{ui_port}"}
     codespace = os.environ.get("CODESPACE_NAME")
     forwarding_domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
     if codespace:
-        origins.add(f"https://{codespace}-4173.{forwarding_domain}")
+        origins.add(f"https://{codespace}-{ui_port}.{forwarding_domain}")
     return origins
 
 
@@ -63,6 +136,36 @@ class GatewayHandler(BaseHTTPRequestHandler):
     pb2 = None
     stub = None
     allowed_origins = set()
+    users = {}
+    session_secret = b""
+
+    def _current_user(self):
+        if not self.users:
+            return ""
+        cookies = SimpleCookie()
+        try:
+            cookies.load(self.headers.get("Cookie", ""))
+        except CookieError:
+            return None
+        session = cookies.get(SESSION_COOKIE)
+        if not session:
+            return None
+        return read_session(session.value, self.session_secret, self.users)
+
+    def _require_user(self):
+        username = self._current_user()
+        if username is None:
+            self._send(401, {"error": "authentication required"})
+            return None
+        return username
+
+    @staticmethod
+    def _storage_key(username, key):
+        return f"user/{username}/{key}" if username else key
+
+    def _origin_allowed(self):
+        origin = self.headers.get("Origin")
+        return not origin or origin in self.allowed_origins
 
     def _send_cors_headers(self):
         origin = self.headers.get("Origin")
@@ -76,12 +179,14 @@ class GatewayHandler(BaseHTTPRequestHandler):
         if method in REQUEST_COUNTERS:
             REQUEST_COUNTERS[method] += 1
 
-    def _send(self, status, payload):
+    def _send(self, status, payload, headers=()):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self._send_cors_headers()
+        for name, value in headers:
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -89,7 +194,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
         return json.loads(self._read_body() or b"{}")
 
     def _read_body(self):
-        length = int(self.headers.get("Content-Length", "0"))
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            raise ValueError("invalid Content-Length") from None
+        if length < 0 or length > MAX_REQUEST_BYTES:
+            raise ValueError("request body exceeds 10 MiB")
         return self.rfile.read(length)
 
     def do_OPTIONS(self):
