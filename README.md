@@ -159,6 +159,21 @@ Start the default three-node demo with `./start.sh`, or pass any set of distinct
 The gateway targets the first node and forwards operations through Raft. Set `UI_PORT`,
 `GATEWAY_PORT`, `GATEWAY_TARGET`, or `RUNTIME_DATA` to override the launcher defaults.
 
+For isolated dashboard accounts, create a private password file and session secret before startup:
+
+```bash
+python3 create_user.py "$HOME/.config/raft-kv/users.json" alice
+export GATEWAY_SESSION_SECRET="$(openssl rand -hex 32)"
+USERS_FILE="$HOME/.config/raft-kv/users.json" ./start.sh 50051 50052 50053
+```
+
+Run `create_user.py` again to provision another account, then restart the gateway. Dashboard keys
+are isolated per username. Without `USERS_FILE`, the local demo remains unauthenticated; do not
+expose that mode to untrusted networks. Backups export one user's JSON entries; restore merges
+entries and does not delete keys missing from the backup.
+Existing unprefixed keys are not automatically migrated when user authentication is enabled; back
+them up and migrate explicitly before switching an existing data set to accounts.
+
 ```powershell
 # Terminal 1: serve the UI
 python -m http.server 4173 --directory web
@@ -177,8 +192,9 @@ The current protobuf API has no list-keys RPC, so the browser remembers keys wri
 the console and reads each one back through the gateway.
 
 The gateway also exposes `/health` for transport liveness, `/ready` for leader readiness,
-`/metrics` for Prometheus-compatible request counters, and `/api/cluster` for Raft term,
-commit index, and leader state.
+`/metrics` for Prometheus-compatible request counters, `/api/nodes` for configured peer reachability,
+`/api/backup` and `/api/restore` for authenticated user data backup, and `/api/cluster` for Raft
+term, commit index, and leader state.
 
 ## License
 

@@ -26,6 +26,19 @@ RUNTIME_DATA="${RUNTIME_DATA:-/tmp/distributed-kv-store-dashboard}"
 UI_PORT="${UI_PORT:-4173}"
 GATEWAY_PORT="${GATEWAY_PORT:-8080}"
 GATEWAY_TARGET="${GATEWAY_TARGET:-localhost:${node_ports[0]}}"
+export UI_PORT
+USERS_FILE="${USERS_FILE:-}"
+if [[ -n "$USERS_FILE" ]]; then
+	session_secret="${GATEWAY_SESSION_SECRET:-}"
+	if [[ ! -f "$USERS_FILE" ]]; then
+		echo "Users file not found: $USERS_FILE" >&2
+		exit 2
+	fi
+	if ((${#session_secret} < 32)); then
+		echo "GATEWAY_SESSION_SECRET must contain at least 32 characters when USERS_FILE is set" >&2
+		exit 2
+	fi
+fi
 mkdir -p "$RUNTIME_DATA"
 
 # Start one Raft node per requested port, with all other ports as its peers.
@@ -41,7 +54,14 @@ done
 
 # Start UI and gateway.
 python3 -m http.server "$UI_PORT" --directory web > /tmp/kv-ui.log 2>&1 &
-python3 gateway.py --host 0.0.0.0 --target "$GATEWAY_TARGET" --port "$GATEWAY_PORT" > /tmp/kv-gateway.log 2>&1 &
+gateway_args=(--host 0.0.0.0 --target "$GATEWAY_TARGET" --port "$GATEWAY_PORT")
+for node_port in "${node_ports[@]}"; do
+	gateway_args+=(--node "localhost:${node_port}")
+done
+if [[ -n "$USERS_FILE" ]]; then
+	gateway_args+=(--users-file "$USERS_FILE")
+fi
+python3 gateway.py "${gateway_args[@]}" > /tmp/kv-gateway.log 2>&1 &
 
 echo "Started Raft nodes on ports: ${node_ports[*]}"
 echo "Dashboard: http://localhost:${UI_PORT}"

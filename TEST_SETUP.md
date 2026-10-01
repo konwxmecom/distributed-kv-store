@@ -118,6 +118,12 @@ ctest --test-dir build -V
 
 The integration tests start temporary server processes and use test ports. The cleanup command above prevents old WAL/snapshot state from affecting the persistence and follower-forwarding tests. Stop any manually started test cluster before rerunning tests if a port is reported as busy.
 
+Run the gateway's account-isolation, backup/restore, and topology tests with:
+
+```bash
+python3 -m unittest tests/test_gateway.py -v
+```
+
 ## 6. Run a Manual Three-Node Cluster
 
 Open three terminals from the project root.
@@ -177,6 +183,28 @@ The launcher starts:
 Override `UI_PORT`, `GATEWAY_PORT`, `GATEWAY_TARGET`, or `RUNTIME_DATA` through environment
 variables. The ports define a static membership at startup; this does not implement safe live
 Raft membership changes.
+
+### Enable isolated dashboard users
+
+Create a user interactively; passwords are stored as salted PBKDF2 hashes in a mode-`0600` file:
+
+```bash
+python3 create_user.py "$HOME/.config/raft-kv/users.json" alice
+export GATEWAY_SESSION_SECRET="$(openssl rand -hex 32)"
+USERS_FILE="$HOME/.config/raft-kv/users.json" ./start.sh 50051 50052 50053
+```
+
+Run `create_user.py` again for each account and restart the gateway so it reloads the user file.
+Each dashboard account has an isolated key namespace. Keep the gateway port private; the demo's
+no-auth mode is only for trusted local development.
+Existing keys without a user namespace are not automatically migrated when authentication is
+enabled; export them before switching existing data to account isolation.
+
+### Backup and restore
+
+Use the dashboard download/upload buttons while signed in. Backups contain one account's key/value
+entries; restore merges values and leaves keys not listed in the backup unchanged. Store downloaded
+backups outside the repository and test restores against a disposable cluster first.
 
 Open the dashboard at:
 

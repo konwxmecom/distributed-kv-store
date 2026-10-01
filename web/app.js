@@ -6,6 +6,7 @@ const defaultGateway = forwardedGatewayHost !== window.location.hostname
 const API_BASE = `${(configuredGateway || defaultGateway).replace(/\/$/, "")}/api`;
 
 let clusterState = null;
+let clusterNodes = [];
 
 let entries = [];
 let activities = [
@@ -34,10 +35,18 @@ function renderNodes() {
     $("#nodeList").innerHTML = '<div class="node-unavailable">Cluster topology is unavailable.</div>';
     return;
   }
-  const nodeName = `node-${clusterState.node_id}`;
-  const role = clusterState.is_leader ? "Leader" : "Follower";
-  $("#nodeList").innerHTML = `<div class="node"><span class="node-icon">${clusterState.is_leader ? "L" : "F"}</span><div class="node-details"><strong>${nodeName}</strong><small>gateway target</small></div><span class="node-state"><i></i>${role}</span></div>`;
-  $(".online-count").textContent = clusterState.is_leader ? "leader ready" : `leader node-${clusterState.leader_id}`;
+  if (!clusterNodes.length) {
+    clusterNodes = [{ node_id: clusterState.node_id, reachable: true, is_leader: clusterState.is_leader, current_term: clusterState.current_term }];
+  }
+  const onlineCount = clusterNodes.filter((node) => node.reachable).length;
+  const leaderNode = clusterNodes.find((node) => node.is_leader);
+  const role = leaderNode ? `Leader node-${leaderNode.node_id}` : "Leader unavailable";
+  $("#nodeList").innerHTML = clusterNodes.map((node) => {
+    const nodeRole = !node.reachable ? "Offline" : node.is_leader ? "Leader" : "Follower";
+    const nodeId = node.node_id > 0 ? `node-${node.node_id}` : escapeHtml(node.address || "unknown");
+    return `<div class="node"><span class="node-icon">${node.reachable ? (node.is_leader ? "L" : "F") : "!"}</span><div class="node-details"><strong>${nodeId}</strong><small>${nodeRole} · term ${node.current_term ?? "—"}</small></div><span class="node-state"><i></i>${node.reachable ? "online" : "offline"}</span></div>`;
+  }).join("");
+  $(".online-count").textContent = `${onlineCount}/${clusterNodes.length} online`;
   $("#commitSummary").textContent = String(clusterState.commit_index);
   $("#nodeSummary").textContent = role;
 }
@@ -60,7 +69,7 @@ async function saveEntry(key, value, previousKey = null) {
   const response = await fetch(`${API_BASE}/entry`, { method: "POST", credentials: "include", body: new URLSearchParams({ key, value }) });
   if (!response.ok) throw new Error((await response.json()).error || "write failed");
   if (previousKey && previousKey !== key) {
-    const deleteResponse = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(previousKey)}`, { method: "DELETE", credentials: "include" });
+    const deleteResponse = await fetch(`${API_BASE}/entry`, { method: "POST", credentials: "include", body: new URLSearchParams({ action: "delete", key: previousKey }) });
     if (!deleteResponse.ok) throw new Error("new value saved, but old key could not be removed");
   }
   const index = entries.findIndex((entry) => entry.key === (previousKey || key));
@@ -70,6 +79,77 @@ async function saveEntry(key, value, previousKey = null) {
   addActivity(key, "committed");
   renderEntries();
 }
+
+$("#loginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const note = $("#loginNote");
+  note.textContent = "Signing in…";
+  try {
+    const response = await fetch(`${API_BASE}/login`, {
+      method: "POST",
+      credentials: "include",
+      body: new URLSearchParams({ username: $("#loginUsername").value.trim(), password: $("#loginPassword").value })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "sign in failed");
+    form.reset();
+    $("#loginDialog").close();
+    await loadFromGateway();
+  } catch (error) {
+    note.textContent = error.message;
+  }
+});
+
+$("#accountButton").addEventListener("click", async () => {
+  await fetch(`${API_BASE}/logout`, { method: "POST", credentials: "include" });
+  clusterState = null;
+  entries = [];
+  $("#accountButton").hidden = true;
+  renderEntries();
+  renderNodes();
+  $("#loginDialog").showModal();
+});
+
+$("#backupButton").addEventListener("click", async () => {
+  try {
+    const response = await fetch(`${API_BASE}/backup`, { credentials: "include" });
+    if (response.status === 401) {
+      $("#loginDialog").showModal();
+      return;
+    }
+    if (!response.ok) throw new Error((await response.json()).error || "backup failed");
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `raft-kv-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) { showGatewayError(error); }
+});
+
+$("#restoreButton").addEventListener("click", () => $("#restoreInput").click());
+$("#restoreInput").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const backup = JSON.parse(await file.text());
+    const response = await fetch(`${API_BASE}/restore`, {
+      method: "POST",
+      credentials: "include",
+      body: new URLSearchParams({ backup: JSON.stringify(backup) })
+    });
+    if (response.status === 401) {
+      $("#loginDialog").showModal();
+      return;
+    }
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `${result.restored} restored; ${result.failed_keys?.length || 0} failed`);
+    await loadFromGateway();
+    $("#formNote").textContent = `Restored ${result.restored} entries.`;
+  } catch (error) { showGatewayError(error); }
+  event.target.value = "";
+});
 
 function openEditor(key = "") {
   const existing = entries.find((entry) => entry.key === key);
@@ -93,7 +173,7 @@ $("#dataRows").addEventListener("click", (event) => {
   if (editKey) openEditor(editKey);
   if (deleteKey) {
     if (!window.confirm(`Delete ${deleteKey}? This writes a delete through Raft.`)) return;
-    fetch(`${API_BASE}/entry?key=${encodeURIComponent(deleteKey)}`, { method: "DELETE", credentials: "include" }).then(async (response) => {
+    fetch(`${API_BASE}/entry`, { method: "POST", credentials: "include", body: new URLSearchParams({ action: "delete", key: deleteKey }) }).then(async (response) => {
       if (!response.ok) throw new Error((await response.json()).error || "delete failed");
       entries = entries.filter((entry) => entry.key !== deleteKey);
       addActivity(deleteKey, "deleted");
@@ -115,12 +195,13 @@ $("#editForm").addEventListener("submit", async (event) => {
 
 $("#entryForm").addEventListener("submit", async (event) => {
   event.preventDefault();
+  const form = event.currentTarget;
   const key = $("#keyInput").value.trim();
   const value = $("#valueInput").value.trim();
   if (!key || !value) return;
   try {
     await saveEntry(key, value);
-    event.currentTarget.reset();
+    form.reset();
     $("#formNote").textContent = `Entry committed for ${key}.`;
   } catch (error) { showGatewayError(error); }
 });
@@ -146,12 +227,25 @@ async function loadFromGateway() {
   try {
     const health = await fetch(`${API_BASE}/health`, { credentials: "include" });
     if (!health.ok) throw new Error("Raft node is unavailable");
+    const healthData = await health.json();
+    $("#accountButton").hidden = !healthData.auth_required || !healthData.authenticated;
     pill.innerHTML = '<span class="pulse"></span> Live cluster';
     pill.classList.add("connected");
 
     const clusterResponse = await fetch(`${API_BASE}/cluster`, { credentials: "include" });
+    if (clusterResponse.status === 401) {
+      $("#healthMetric").textContent = "Sign in";
+      $("#healthDetail").textContent = "Authentication required";
+      $("#formNote").textContent = "Sign in to access your isolated keys.";
+      $("#loginDialog").showModal();
+      return;
+    }
     if (!clusterResponse.ok) throw new Error("cluster status is unavailable");
     clusterState = await clusterResponse.json();
+    const nodesResponse = await fetch(`${API_BASE}/nodes`, { credentials: "include" });
+    clusterNodes = nodesResponse.ok ? (await nodesResponse.json()).nodes : [];
+    const leaderNode = clusterNodes.find((node) => node.is_leader);
+    if (leaderNode) clusterState.leader_id = leaderNode.node_id;
     const leaderLabel = clusterState.is_leader ? `node-${clusterState.node_id}` : `node-${clusterState.leader_id || clusterState.node_id}`;
     $("#heroLeader").textContent = leaderLabel;
     $("#leaderMeta").innerHTML = `<i></i> ${clusterState.is_leader ? "healthy · leader" : "healthy · follower"} · term ${clusterState.current_term}`;

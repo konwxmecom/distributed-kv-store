@@ -18,6 +18,10 @@
       </a>
       <div class="topbar-actions">
         <span class="mode-pill" id="connectionPill"><span class="pulse"></span> Connecting…</span>
+        <button class="icon-button" id="backupButton" type="button" title="Download backup" aria-label="Download backup">↓</button>
+        <button class="icon-button" id="restoreButton" type="button" title="Restore backup" aria-label="Restore backup">↑</button>
+        <input id="restoreInput" type="file" accept="application/json,.json" hidden>
+        <button class="icon-button" id="accountButton" type="button" title="Sign out" aria-label="Sign out" hidden>↪</button>
         <button class="icon-button" id="refreshButton" title="Refresh dashboard" aria-label="Refresh dashboard">↻</button>
       </div>
     </header>
@@ -63,7 +67,7 @@
         </section>
 
         <aside class="panel cluster-panel">
-          <div class="panel-heading compact"><div><p class="section-kicker">Topology</p><h2>Cluster nodes</h2></div><span class="online-count">3 online</span></div>
+          <div class="panel-heading compact"><div><p class="section-kicker">Topology</p><h2>Cluster nodes</h2></div><span class="online-count">checking</span></div>
           <div class="node-list" id="nodeList"></div>
           <div class="panel-divider"></div>
           <div class="replication-summary"><div><span>Commit index</span><strong id="commitSummary">—</strong></div><div><span>Node state</span><strong id="nodeSummary">—</strong></div></div>
@@ -94,6 +98,16 @@
       <label>Key<input id="dialogKey" required maxlength="64"></label>
       <label>Value<textarea id="dialogValue" required maxlength="240" rows="4"></textarea></label>
       <div class="dialog-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="submit-button" value="default">Save entry <span>→</span></button></div>
+    </form>
+  </dialog>
+  <dialog id="loginDialog">
+    <form id="loginForm" class="dialog-card">
+      <p class="section-kicker">Raft KV account</p>
+      <h2>Sign in</h2>
+      <label>Username<input id="loginUsername" required maxlength="64" autocomplete="username"></label>
+      <label>Password<input id="loginPassword" type="password" required autocomplete="current-password"></label>
+      <p class="form-note" id="loginNote">Sign in to access your isolated keys.</p>
+      <button class="submit-button" type="submit">Sign in <span>→</span></button>
     </form>
   </dialog>
   <script src="app.js"></script>
