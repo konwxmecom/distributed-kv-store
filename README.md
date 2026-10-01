@@ -162,7 +162,8 @@ python gateway.py --target localhost:50051 --port 8080
 Open `http://localhost:4173` after starting the gateway and the Raft node. The console includes
 live health status, key CRUD requests, node topology, replication summary, and recent activity.
 In remote environments, forward port `8080` as well as `4173`; Codespaces dashboard URLs select
-the matching forwarded gateway automatically.
+the matching forwarded gateway automatically. The gateway allows authenticated dashboard requests
+from the local UI and current Codespace; for another remote UI origin, add `--allowed-origin <origin>`.
 The current protobuf API has no list-keys RPC, so the browser remembers keys written through
 the console and reads each one back through the gateway.
 

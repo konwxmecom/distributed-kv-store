@@ -302,10 +302,16 @@ In VS Code, open the **Ports** panel and forward ports:
 
 Open the forwarded `4173` URL from the Ports panel. Do not replace it with the container's internal `localhost` URL when browsing from your own computer.
 
-The gateway binds to `0.0.0.0:8080` so a forwarded port can reach it. Forward both ports and make sure the gateway port has the same visibility setting as the dashboard. The dashboard automatically maps a Codespaces `-4173.app.github.dev` URL to the matching `-8080.app.github.dev` gateway URL. For other remote hostnames, supply the gateway URL explicitly:
+The gateway binds to `0.0.0.0:8080` so a forwarded port can reach it. Forward both ports and keep the gateway private unless public access is intentional. The dashboard automatically maps a Codespaces `-4173.app.github.dev` URL to the matching `-8080.app.github.dev` gateway URL and sends the browser's Codespaces credentials. For other remote hostnames, allow the dashboard origin when starting the gateway and supply its URL:
 
 ```text
 https://<forwarded-dashboard-host>/?api=https://<forwarded-gateway-host>
+```
+
+Start the gateway with the dashboard origin explicitly allowed:
+
+```bash
+python3 gateway.py --target localhost:50051 --port 8080 --allowed-origin https://<forwarded-dashboard-host>
 ```
 
 The gateway must be forwarded publicly or privately according to the environment's security settings. Do not expose a development gateway publicly without authentication or network restrictions.

@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -23,6 +24,15 @@ REQUEST_COUNTERS = {
     "health": 0,
     "cluster": 0,
 }
+
+
+def dashboard_origins():
+    origins = {"http://localhost:4173", "http://127.0.0.1:4173"}
+    codespace = os.environ.get("CODESPACE_NAME")
+    forwarding_domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
+    if codespace:
+        origins.add(f"https://{codespace}-4173.{forwarding_domain}")
+    return origins
 
 
 def read_text(path):
@@ -52,6 +62,14 @@ class GatewayHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     pb2 = None
     stub = None
+    allowed_origins = set()
+
+    def _send_cors_headers(self):
+        origin = self.headers.get("Origin")
+        if origin in self.allowed_origins:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Credentials", "true")
+            self.send_header("Vary", "Origin")
 
     @staticmethod
     def _record_metric(method, status_code):
@@ -63,7 +81,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -73,7 +91,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._send_cors_headers()
         self.send_header("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
@@ -219,6 +237,7 @@ def main():
     parser.add_argument("--target", default="localhost:50051", help="gRPC node address")
     parser.add_argument("--port", type=int, default=8080, help="HTTP gateway port")
     parser.add_argument("--host", default="0.0.0.0", help="HTTP gateway bind address")
+    parser.add_argument("--allowed-origin", action="append", default=[], help="additional dashboard origin allowed to call the gateway")
     parser.add_argument("--ca", help="CA certificate for mTLS")
     parser.add_argument("--cert", help="client certificate for mTLS")
     parser.add_argument("--key", help="client private key for mTLS")
@@ -239,6 +258,7 @@ def main():
         channel = grpc.insecure_channel(args.target)
     GatewayHandler.pb2 = pb2
     GatewayHandler.stub = pb2_grpc.KVStoreStub(channel)
+    GatewayHandler.allowed_origins = dashboard_origins().union(args.allowed_origin)
     server = ThreadingHTTPServer((args.host, args.port), GatewayHandler)
     server.target = args.target
     print(f"KV gateway listening on http://127.0.0.1:{args.port} -> {args.target}")

@@ -57,10 +57,10 @@ function addActivity(key, action) {
 }
 
 async function saveEntry(key, value, previousKey = null) {
-  const response = await fetch(`${API_BASE}/entry`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value }) });
+  const response = await fetch(`${API_BASE}/entry`, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value }) });
   if (!response.ok) throw new Error((await response.json()).error || "write failed");
   if (previousKey && previousKey !== key) {
-    const deleteResponse = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(previousKey)}`, { method: "DELETE" });
+    const deleteResponse = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(previousKey)}`, { method: "DELETE", credentials: "include" });
     if (!deleteResponse.ok) throw new Error("new value saved, but old key could not be removed");
   }
   const index = entries.findIndex((entry) => entry.key === (previousKey || key));
@@ -93,7 +93,7 @@ $("#dataRows").addEventListener("click", (event) => {
   if (editKey) openEditor(editKey);
   if (deleteKey) {
     if (!window.confirm(`Delete ${deleteKey}? This writes a delete through Raft.`)) return;
-    fetch(`${API_BASE}/entry?key=${encodeURIComponent(deleteKey)}`, { method: "DELETE" }).then(async (response) => {
+    fetch(`${API_BASE}/entry?key=${encodeURIComponent(deleteKey)}`, { method: "DELETE", credentials: "include" }).then(async (response) => {
       if (!response.ok) throw new Error((await response.json()).error || "delete failed");
       entries = entries.filter((entry) => entry.key !== deleteKey);
       addActivity(deleteKey, "deleted");
@@ -144,12 +144,12 @@ function showGatewayError(error) {
 async function loadFromGateway() {
   const pill = $("#connectionPill");
   try {
-    const health = await fetch(`${API_BASE}/health`);
+    const health = await fetch(`${API_BASE}/health`, { credentials: "include" });
     if (!health.ok) throw new Error("Raft node is unavailable");
     pill.innerHTML = '<span class="pulse"></span> Live cluster';
     pill.classList.add("connected");
 
-    const clusterResponse = await fetch(`${API_BASE}/cluster`);
+    const clusterResponse = await fetch(`${API_BASE}/cluster`, { credentials: "include" });
     if (!clusterResponse.ok) throw new Error("cluster status is unavailable");
     clusterState = await clusterResponse.json();
     const leaderLabel = clusterState.is_leader ? `node-${clusterState.node_id}` : `node-${clusterState.leader_id || clusterState.node_id}`;
@@ -162,13 +162,13 @@ async function loadFromGateway() {
     $("#snapshotMetric").textContent = "Live";
     renderNodes();
 
-    const keysResponse = await fetch(`${API_BASE}/keys`);
+    const keysResponse = await fetch(`${API_BASE}/keys`, { credentials: "include" });
     if (!keysResponse.ok) throw new Error("could not list keys from cluster");
     const keysData = await keysResponse.json();
     const keys = Array.isArray(keysData.keys) ? keysData.keys : [];
 
     const values = await Promise.all(keys.map(async (key) => {
-      const response = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(key)}`);
+      const response = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(key)}`, { credentials: "include" });
       const data = await response.json();
       return data.found ? { key, value: data.value, updated: "from Raft" } : null;
     }));
