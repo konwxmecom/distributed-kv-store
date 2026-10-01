@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1000" role="img" aria-labelledby="title description">
+  <title id="title">Raft KV Console dashboard preview</title>
+  <desc id="description">Dashboard view showing healthy cluster metrics, four key-value entries, three Raft nodes, recent activity, and the write form.</desc>
+  <defs>
+    <linearGradient id="heroWash" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5f7f2"/>
+      <stop offset="1" stop-color="#e1f2e8"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#294a3b" flood-opacity=".08"/>
+    </filter>
+    <style>
+      .sans { font-family: 'DM Sans', Arial, sans-serif; }
+      .display { font-family: 'Space Grotesk', 'DM Sans', Arial, sans-serif; }
+      .ink { fill: #17231f; }
+      .muted { fill: #718078; }
+      .green { fill: #1c8a68; }
+      .kicker { fill: #1c8a68; font: 700 11px 'DM Sans', Arial, sans-serif; letter-spacing: 1.5px; }
+      .label { fill: #718078; font: 12px 'DM Sans', Arial, sans-serif; }
+      .small { fill: #718078; font: 11px 'DM Sans', Arial, sans-serif; }
+      .body { fill: #52625a; font: 13px 'DM Sans', Arial, sans-serif; }
+      .heading { fill: #17231f; font: 600 21px 'Space Grotesk', 'DM Sans', Arial, sans-serif; }
+      .card { fill: #fff; stroke: #dce4de; }
+    </style>
+  </defs>
+  <rect width="1440" height="1000" fill="#f5f7f2"/>
+  <rect x="134" y="0" width="1172" height="1000" fill="url(#heroWash)" opacity=".34"/>
+  <g class="sans">
+    <path d="M168 75h1104" stroke="#dce4de"/>
+    <rect x="168" y="35" width="35" height="35" rx="10" fill="#1c8a68"/>
+    <text x="179" y="59" fill="#fff" font-size="20" font-weight="700">R</text>
+    <text x="214" y="50" class="display ink" font-size="17" font-weight="700">Raft KV</text>
+    <text x="214" y="64" class="muted" font-size="9" letter-spacing="1">CONTROL CONSOLE</text>
+    <rect x="1085" y="38" width="137" height="30" rx="15" fill="#dff2e8"/>
+    <circle cx="1101" cy="53" r="4" fill="#46b879"/>
+    <text x="1112" y="57" fill="#12634d" font-size="12" font-weight="600">Live cluster</text>
+    <rect x="1234" y="36" width="36" height="36" rx="9" fill="#fff" stroke="#dce4de"/>
+    <text x="1245" y="60" fill="#12634d" font-size="19">&#8635;</text>
+
+    <text x="168" y="126" class="kicker">DISTRIBUTED KEY-VALUE STORE</text>
+    <text x="168" y="193" class="display ink" font-size="60" font-weight="700">See consensus</text>
+    <text x="168" y="252" class="display green" font-size="60" font-weight="700">in motion.</text>
+    <text x="168" y="292" class="body" font-size="15">Inspect leadership, replicated data, and live writes across your Raft cluster.</text>
+    <path d="M1014 181v94" stroke="#e9b949" stroke-width="2"/>
+    <text x="1037" y="205" class="small">CURRENT LEADER</text>
+    <text x="1037" y="237" class="display ink" font-size="25" font-weight="600">node-59301</text>
+    <circle cx="1042" cy="259" r="3" fill="#46b879"/>
+    <text x="1052" y="263" class="small">healthy &#183; term 1</text>
+
+    <g filter="url(#shadow)">
+      <rect x="168" y="333" width="268" height="118" rx="10" class="card"/>
+      <rect x="168" y="333" width="268" height="4" rx="2" fill="#1c8a68"/>
+      <rect x="450" y="333" width="268" height="118" rx="10" class="card"/>
+      <rect x="732" y="333" width="268" height="118" rx="10" class="card"/>
+      <rect x="1014" y="333" width="256" height="118" rx="10" class="card"/>
+      <rect x="1014" y="333" width="256" height="4" rx="2" fill="#e9b949"/>
+    </g>
+    <text x="190" y="366" class="label">Cluster health</text><text x="190" y="405" class="display ink" font-size="26" font-weight="600">Ready</text><text x="190" y="429" class="small">3 of 3 nodes responding</text>
+    <text x="472" y="366" class="label">Current term</text><text x="472" y="405" class="display ink" font-size="26" font-weight="600">1</text><text x="472" y="429" class="small">reported by Raft</text>
+    <text x="754" y="366" class="label">Committed entries</text><text x="754" y="405" class="display ink" font-size="26" font-weight="600">4</text><text x="754" y="429" class="small">current commit index</text>
+    <text x="1036" y="366" class="label">Snapshot</text><text x="1036" y="405" class="display ink" font-size="26" font-weight="600">Live</text><text x="1036" y="429" class="small">storage state</text>
+
+    <g filter="url(#shadow)">
+      <rect x="168" y="470" width="732" height="350" rx="10" class="card"/>
+      <rect x="916" y="470" width="354" height="350" rx="10" class="card"/>
+      <rect x="168" y="836" width="732" height="145" rx="10" class="card"/>
+      <rect x="916" y="836" width="354" height="145" rx="10" class="card"/>
+    </g>
+    <text x="192" y="505" class="kicker">STATE MACHINE</text><text x="192" y="534" class="heading">Key-value data</text>
+    <rect x="741" y="492" width="135" height="38" rx="7" fill="#1c8a68"/><text x="763" y="516" fill="#fff" font-size="12" font-weight="700">+ New entry</text>
+    <rect x="192" y="552" width="560" height="38" rx="7" fill="#fff" stroke="#dce4de"/><text x="207" y="576" class="small">Search keys or values</text><text x="772" y="576" class="small">4 keys</text>
+    <text x="193" y="618" class="small" font-size="9" font-weight="700">KEY</text><text x="426" y="618" class="small" font-size="9" font-weight="700">VALUE</text><text x="641" y="618" class="small" font-size="9" font-weight="700">STATUS</text>
+    <path d="M192 630h684M192 676h684M192 722h684M192 768h684" stroke="#edf1ed"/>
+    <text x="193" y="658" fill="#12634d" font-size="13" font-weight="700">service.status</text><text x="426" y="658" class="body">healthy</text><text x="641" y="658" class="green" font-size="11" font-weight="700">&#9679; committed</text>
+    <text x="193" y="704" fill="#12634d" font-size="13" font-weight="700">cache.ttl</text><text x="426" y="704" class="body">300 seconds</text><text x="641" y="704" class="green" font-size="11" font-weight="700">&#9679; committed</text>
+    <text x="193" y="750" fill="#12634d" font-size="13" font-weight="700">rollout.canary</text><text x="426" y="750" class="body">25 percent</text><text x="641" y="750" class="green" font-size="11" font-weight="700">&#9679; committed</text>
+    <text x="193" y="796" fill="#12634d" font-size="13" font-weight="700">region</text><text x="426" y="796" class="body">us-east-1</text><text x="641" y="796" class="green" font-size="11" font-weight="700">&#9679; committed</text>
+
+    <text x="940" y="505" class="kicker">TOPOLOGY</text><text x="940" y="534" class="heading">Cluster nodes</text>
+    <rect x="1160" y="489" width="88" height="27" rx="14" fill="#dff2e8"/><text x="1176" y="507" fill="#12634d" font-size="11" font-weight="600">3/3 online</text>
+    <circle cx="958" cy="579" r="15" fill="#dff2e8"/><text x="954" y="584" fill="#1c8a68" font-size="12" font-weight="700">L</text><text x="987" y="576" class="display ink" font-size="13" font-weight="600">node-59301</text><text x="987" y="593" class="small">Leader &#183; term 1</text><text x="1190" y="583" class="small">online</text>
+    <path d="M940 607h306" stroke="#edf1ed"/>
+    <circle cx="958" cy="634" r="15" fill="#fff" stroke="#dce4de"/><text x="954" y="639" fill="#1c8a68" font-size="12" font-weight="700">F</text><text x="987" y="631" class="display ink" font-size="13" font-weight="600">node-59302</text><text x="987" y="648" class="small">Follower &#183; term 1</text><text x="1190" y="638" class="small">online</text>
+    <path d="M940 662h306" stroke="#edf1ed"/>
+    <circle cx="958" cy="689" r="15" fill="#fff" stroke="#dce4de"/><text x="954" y="694" fill="#1c8a68" font-size="12" font-weight="700">F</text><text x="987" y="686" class="display ink" font-size="13" font-weight="600">node-59303</text><text x="987" y="703" class="small">Follower &#183; term 1</text><text x="1190" y="693" class="small">online</text>
+    <path d="M940 728h306" stroke="#dce4de"/>
+    <text x="940" y="757" class="small">Commit index</text><text x="940" y="781" class="display ink" font-size="16" font-weight="600">4</text><text x="1110" y="757" class="small">Node state</text><text x="1110" y="781" class="display ink" font-size="16" font-weight="600">Leader</text>
+
+    <text x="192" y="870" class="kicker">LIVE FEED</text><text x="192" y="899" class="heading">Recent activity</text>
+    <circle cx="205" cy="933" r="12" fill="#dff2e8"/><text x="201" y="937" fill="#1c8a68" font-size="11">&#10003;</text><text x="229" y="931" class="body">Committed <tspan font-weight="700">service.status</tspan></text><text x="229" y="948" class="small">Raft gateway &#183; just now</text>
+    <circle cx="510" cy="933" r="12" fill="#dff2e8"/><text x="506" y="937" fill="#1c8a68" font-size="11">&#10003;</text><text x="534" y="931" class="body">Committed <tspan font-weight="700">cache.ttl</tspan></text><text x="534" y="948" class="small">Raft gateway &#183; just now</text>
+    <text x="940" y="870" class="kicker">WRITE PATH</text><text x="940" y="899" class="heading">Try a mutation</text><rect x="940" y="916" width="304" height="39" rx="7" fill="#f5f7f2" stroke="#dce4de"/><text x="953" y="941" class="small">Key</text><rect x="940" y="963" width="304" height="5" rx="2" fill="#1c8a68"/>
+  </g>
+</svg>

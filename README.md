@@ -1,6 +1,10 @@
-# Distributed Key-Value Store with Raft Consensus
+# Raft KV Store
 
-A distributed key-value store built from scratch in C++, implementing the **Raft consensus algorithm** for leader election and log replication. The applied state machine is in memory, while the Raft WAL and snapshots provide durable recovery. Inspired by systems like etcd and Consul, this project demonstrates consensus, replication, failure detection, and automatic recovery.
+**A distributed key-value store in C++17, built around Raft leader election and replicated log commits.** Includes a browser console, isolated dashboard accounts, JSON backup/restore, and configurable static clusters.
+
+![Raft KV dashboard preview](docs/dashboard-preview.png)
+
+<p align="center"><sub>Dashboard preview of a healthy three-node cluster with live keys, node roles, and commit status.</sub></p>
 
 ## Features
 
@@ -57,6 +61,15 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
+Start the default three-node demo and stop all project services with:
+
+```bash
+./start.sh
+./stop.sh
+```
+
+`stop.sh` stops this repository's Raft nodes, gateway, and dashboard server while preserving runtime data. Start a different static cluster by passing its distinct node ports, for example `./start.sh 50051 50052 50053 50054 50055`. See [TEST_SETUP.md](TEST_SETUP.md) for environment setup and the dashboard workflow.
+
 ### Quick overview
 
 ```powershell
@@ -99,6 +112,8 @@ distributed-kv-store/
 │   └── kvstore.proto        # Service and message definitions
 ├── server.cpp                # Raft node implementation (election + replication + KV store)
 ├── client.cpp                 # Simple gRPC client
+├── start.sh                   # Start a configurable static cluster and dashboard
+├── stop.sh                    # Stop this project's running services
 ├── chaos_test.ps1            # Automated resilience testing script
 ├── CMakeLists.txt
 └── SETUP.md
@@ -141,9 +156,9 @@ localhost:50053
 ```
 
 The membership watcher reloads changed peer files during runtime and rebuilds the
-outbound gRPC stubs without restarting the node. Keep one endpoint per line and do
-not leave the file empty; an empty membership is rejected to avoid silently changing
-the quorum model.
+outbound gRPC stubs without restarting the node. This does not implement Raft joint
+consensus; use static membership at startup for the demo. Keep one endpoint per line and
+do not leave the file empty.
 
 ## Operator console
 
@@ -188,13 +203,20 @@ live health status, key CRUD requests, node topology, replication summary, and r
 In remote environments, forward port `8080` as well as `4173`; Codespaces dashboard URLs select
 the matching forwarded gateway automatically. The gateway allows authenticated dashboard requests
 from the local UI and current Codespace; for another remote UI origin, add `--allowed-origin <origin>`.
-The current protobuf API has no list-keys RPC, so the browser remembers keys written through
-the console and reads each one back through the gateway.
+The browser uses the gateway's `ListKeys` RPC and scopes dashboard accounts to separate key
+prefixes. Existing unprefixed records are not automatically migrated when account mode is enabled.
 
 The gateway also exposes `/health` for transport liveness, `/ready` for leader readiness,
 `/metrics` for Prometheus-compatible request counters, `/api/nodes` for configured peer reachability,
 `/api/backup` and `/api/restore` for authenticated user data backup, and `/api/cluster` for Raft
 term, commit index, and leader state.
+
+### Production Status
+
+This repository is a learning/demo system, not a production-ready managed database. Keep gRPC and
+gateway ports on trusted networks; per-user dashboard authentication does not authenticate direct
+gRPC clients. Before public deployment, add TLS/network policy, rate limiting and audit controls,
+and validate recovery and membership-change behavior under failure.
 
 ## License
 
