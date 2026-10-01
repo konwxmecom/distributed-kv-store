@@ -279,11 +279,47 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 self._send(503, {"status": "not_ready", "error": error.details()})
             return
 
+        if parsed.path == "/api/nodes":
+            node_stubs = self.server.node_stubs
+            with ThreadPoolExecutor(max_workers=max(1, min(len(node_stubs), 16))) as executor:
+                nodes = list(executor.map(self._read_node_status, node_stubs))
+            leader = next((node["node_id"] for node in nodes if node["is_leader"]), -1)
+            for node in nodes:
+                node["leader_id"] = leader
+            self._send(200, {"nodes": nodes})
+            return
+
+        if parsed.path == "/api/backup":
+            try:
+                response = self.stub.ListKeys(self.pb2.ListKeysRequest(), timeout=5)
+                prefix = self._storage_key(username, "")
+                entries = {}
+                for stored_key in response.keys:
+                    if not stored_key.startswith(prefix):
+                        continue
+                    key = stored_key[len(prefix):]
+                    item = self.stub.Get(self.pb2.GetRequest(key=stored_key), timeout=5)
+                    if item.found:
+                        entries[key] = item.value
+                self._record_metric("backup", 200)
+                self._send(200, {
+                    "format": "raft-kv-backup-v1",
+                    "created_at": int(time.time()),
+                    "user": username or "default",
+                    "entries": entries,
+                }, (("Content-Disposition", "attachment; filename=raft-kv-backup.json"),))
+            except grpc.RpcError as error:
+                self._record_metric("backup", 502)
+                self._send(502, {"error": error.details()})
+            return
+
         if parsed.path == "/api/keys":
             try:
                 response = self.stub.ListKeys(self.pb2.ListKeysRequest(), timeout=5)
                 self._record_metric("get", 200)
-                self._send(200, {"keys": list(response.keys)})
+                prefix = self._storage_key(username, "")
+                visible_keys = [key[len(prefix):] for key in response.keys if key.startswith(prefix)]
+                self._send(200, {"keys": visible_keys})
             except grpc.RpcError as error:
                 self._record_metric("get", 502)
                 self._send(502, {"error": error.details()})
@@ -492,10 +528,24 @@ def main():
     parser.add_argument("--port", type=int, default=8080, help="HTTP gateway port")
     parser.add_argument("--host", default="0.0.0.0", help="HTTP gateway bind address")
     parser.add_argument("--allowed-origin", action="append", default=[], help="additional dashboard origin allowed to call the gateway")
+    parser.add_argument("--users-file", help="private JSON file of PBKDF2 password records; enables per-user key isolation")
+    parser.add_argument("--node", action="append", default=[], help="additional cluster node address for topology; may be repeated")
     parser.add_argument("--ca", help="CA certificate for mTLS")
     parser.add_argument("--cert", help="client certificate for mTLS")
     parser.add_argument("--key", help="client private key for mTLS")
     args = parser.parse_args()
+
+    GatewayHandler.users = {}
+    GatewayHandler.session_secret = b""
+    if args.users_file:
+        try:
+            GatewayHandler.users = load_users(args.users_file)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            parser.error(str(error))
+        secret = os.environ.get("GATEWAY_SESSION_SECRET", "")
+        if len(secret.encode("utf-8")) < 32:
+            parser.error("GATEWAY_SESSION_SECRET must contain at least 32 bytes when --users-file is enabled")
+        GatewayHandler.session_secret = secret.encode("utf-8")
 
     pb2, pb2_grpc = load_generated_client()
     tls_files = (args.ca, args.cert, args.key)
@@ -513,8 +563,18 @@ def main():
     GatewayHandler.pb2 = pb2
     GatewayHandler.stub = pb2_grpc.KVStoreStub(channel)
     GatewayHandler.allowed_origins = dashboard_origins().union(args.allowed_origin)
+    channels = [channel]
+    node_addresses = list(dict.fromkeys([args.target, *args.node]))
+    node_stubs = [(args.target, GatewayHandler.stub)]
+    for address in node_addresses:
+        if address == args.target:
+            continue
+        node_channel = grpc.secure_channel(address, credentials) if all(tls_files) else grpc.insecure_channel(address)
+        channels.append(node_channel)
+        node_stubs.append((address, pb2_grpc.KVStoreStub(node_channel)))
     server = ThreadingHTTPServer((args.host, args.port), GatewayHandler)
     server.target = args.target
+    server.node_stubs = node_stubs
     print(f"KV gateway listening on http://127.0.0.1:{args.port} -> {args.target}")
     try:
         server.serve_forever()
@@ -522,7 +582,8 @@ def main():
         pass
     finally:
         server.server_close()
-        channel.close()
+        for open_channel in channels:
+            open_channel.close()
 
 
 if __name__ == "__main__":
