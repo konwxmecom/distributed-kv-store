@@ -54,7 +54,14 @@ done
 
 # Start UI and gateway.
 python3 -m http.server "$UI_PORT" --directory web > /tmp/kv-ui.log 2>&1 &
-python3 gateway.py --host 0.0.0.0 --target "$GATEWAY_TARGET" --port "$GATEWAY_PORT" > /tmp/kv-gateway.log 2>&1 &
+gateway_args=(--host 0.0.0.0 --target "$GATEWAY_TARGET" --port "$GATEWAY_PORT")
+for node_port in "${node_ports[@]}"; do
+	gateway_args+=(--node "localhost:${node_port}")
+done
+if [[ -n "$USERS_FILE" ]]; then
+	gateway_args+=(--users-file "$USERS_FILE")
+fi
+python3 gateway.py "${gateway_args[@]}" > /tmp/kv-gateway.log 2>&1 &
 
 echo "Started Raft nodes on ports: ${node_ports[*]}"
 echo "Dashboard: http://localhost:${UI_PORT}"
