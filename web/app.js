@@ -1,5 +1,9 @@
 const configuredGateway = new URLSearchParams(window.location.search).get("api");
-const API_BASE = `${(configuredGateway || "http://127.0.0.1:8080").replace(/\/$/, "")}/api`;
+const forwardedGatewayHost = window.location.hostname.replace(/-4173(?=\.app\.github\.dev$)/, "-8080");
+const defaultGateway = forwardedGatewayHost !== window.location.hostname
+  ? `${window.location.protocol}//${forwardedGatewayHost}`
+  : "http://127.0.0.1:8080";
+const API_BASE = `${(configuredGateway || defaultGateway).replace(/\/$/, "")}/api`;
 
 let clusterState = null;
 
@@ -175,7 +179,7 @@ async function loadFromGateway() {
     clusterState = null;
     pill.innerHTML = '<span class="pulse"></span> Gateway offline';
     pill.classList.remove("connected");
-    $("#formNote").textContent = "Start gateway.py to connect this console to the cluster.";
+    $("#formNote").textContent = `Gateway unavailable at ${API_BASE}: ${error.message}. Check gateway.py and forward port 8080.`;
     $("#healthMetric").textContent = "Offline";
     $("#healthDetail").textContent = "Gateway unavailable";
     $("#snapshotMetric").textContent = "Unknown";
