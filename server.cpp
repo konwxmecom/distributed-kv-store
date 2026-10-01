@@ -544,7 +544,11 @@ private:
         }
         const int majority = ((int)PeerSnapshot().size() + 1) / 2 + 1;
         if (acks < majority)
+        {
+            std::cerr << "Write on leader " << node_id << " was not committed: "
+                      << acks << "/" << majority << " acknowledgements" << std::endl;
             return false;
+        }
 
         {
             std::lock_guard<std::mutex> lock(log_mutex);
@@ -830,10 +834,16 @@ public:
                 const auto status = leader_stub->Set(&ctx, forwarded, &forwarded_response);
                 if (status.ok())
                 {
+                    if (!forwarded_response.success())
+                        std::cerr << "Leader rejected forwarded write from node " << node_id << std::endl;
                     response->set_success(forwarded_response.success());
                     return Status::OK;
                 }
+                std::cerr << "Forwarded write from node " << node_id << " failed: "
+                          << status.error_message() << std::endl;
             }
+            else
+                std::cerr << "No leader found while forwarding write from node " << node_id << std::endl;
             response->set_success(false);
             return Status::OK;
         }
