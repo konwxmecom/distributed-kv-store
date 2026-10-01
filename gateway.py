@@ -211,11 +211,27 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        username = ""
+        if parsed.path.startswith("/api/") and parsed.path != "/api/health":
+            username = self._require_user()
+            if username is None:
+                return
+        if parsed.path == "/metrics" and self.users:
+            username = self._require_user()
+            if username is None:
+                return
+
         if parsed.path == "/health":
             try:
                 self.stub.Heartbeat(self.pb2.HeartbeatRequest(leader_port=0, leader_term=0), timeout=2)
                 self._record_metric("health", 200)
-                self._send(200, {"status": "ok", "connected": True, "target": self.server.target})
+                self._send(200, {
+                    "status": "ok",
+                    "connected": True,
+                    "target": self.server.target,
+                    "auth_required": bool(self.users),
+                    "authenticated": not self.users or self._current_user() is not None,
+                })
             except grpc.RpcError as error:
                 self._record_metric("health", 503)
                 self._send(503, {"status": "error", "connected": False, "error": error.details()})
@@ -237,7 +253,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
             try:
                 self.stub.Heartbeat(self.pb2.HeartbeatRequest(leader_port=0, leader_term=0), timeout=2)
                 self._record_metric("health", 200)
-                self._send(200, {"connected": True, "target": self.server.target})
+                self._send(200, {
+                    "connected": True,
+                    "target": self.server.target,
+                    "auth_required": bool(self.users),
+                    "authenticated": not self.users or self._current_user() is not None,
+                })
             except grpc.RpcError as error:
                 self._record_metric("health", 503)
                 self._send(503, {"connected": False, "error": error.details()})
@@ -291,7 +312,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 self._send(400, {"error": "key is required"})
                 return
             try:
-                response = self.stub.Get(self.pb2.GetRequest(key=key), timeout=2)
+                stored_key = self._storage_key(username, key)
+                response = self.stub.Get(self.pb2.GetRequest(key=stored_key), timeout=2)
                 self._record_metric("get", 200)
                 self._send(200, {"key": key, "value": response.value, "found": response.found})
             except grpc.RpcError as error:
