@@ -155,17 +155,28 @@ rm -rf /tmp/kvstore-manual
 
 ## 7. Run the Complete Dashboard Stack
 
-After building and installing Python dependencies, the recommended one-command launcher is:
+After building and installing Python dependencies, the default launcher starts three nodes:
 
 ```bash
 ./start.sh
 ```
 
-It starts:
+Pass one or more distinct ports to choose the static cluster membership. For example, start a
+five-node cluster with:
 
-- three Raft nodes on ports `50051`, `50052`, and `50053`
+```bash
+./start.sh 50051 50052 50053 50054 50055
+```
+
+The launcher starts:
+
+- one Raft node per supplied port (three default nodes on `50051`, `50052`, and `50053`)
 - the static dashboard on port `4173`
-- the HTTP gateway on port `8080`
+- the HTTP gateway on port `8080`, targeting the first node
+
+Override `UI_PORT`, `GATEWAY_PORT`, `GATEWAY_TARGET`, or `RUNTIME_DATA` through environment
+variables. The ports define a static membership at startup; this does not implement safe live
+Raft membership changes.
 
 Open the dashboard at:
 

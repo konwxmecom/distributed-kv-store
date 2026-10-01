@@ -150,6 +150,15 @@ the quorum model.
 The `web/` directory contains a lightweight dashboard for exploring the store from a browser.
 The Python gateway forwards browser CRUD requests to the real C++ gRPC node.
 
+Start the default three-node demo with `./start.sh`, or pass any set of distinct node ports:
+
+```bash
+./start.sh 50051 50052 50053 50054 50055
+```
+
+The gateway targets the first node and forwards operations through Raft. Set `UI_PORT`,
+`GATEWAY_PORT`, `GATEWAY_TARGET`, or `RUNTIME_DATA` to override the launcher defaults.
+
 ```powershell
 # Terminal 1: serve the UI
 python -m http.server 4173 --directory web
