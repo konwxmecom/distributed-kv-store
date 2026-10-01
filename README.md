@@ -173,4 +173,4 @@ commit index, and leader state.
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
