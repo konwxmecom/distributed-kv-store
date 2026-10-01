@@ -302,7 +302,7 @@ In VS Code, open the **Ports** panel and forward ports:
 
 Open the forwarded `4173` URL from the Ports panel. Do not replace it with the container's internal `localhost` URL when browsing from your own computer.
 
-The gateway binds to `0.0.0.0:8080` so a forwarded port can reach it. The dashboard JavaScript defaults to `http://127.0.0.1:8080`; when the dashboard is opened through a remote forwarded URL, use a gateway URL query parameter if needed:
+The gateway binds to `0.0.0.0:8080` so a forwarded port can reach it. Forward both ports and make sure the gateway port has the same visibility setting as the dashboard. The dashboard automatically maps a Codespaces `-4173.app.github.dev` URL to the matching `-8080.app.github.dev` gateway URL. For other remote hostnames, supply the gateway URL explicitly:
 
 ```text
 https://<forwarded-dashboard-host>/?api=https://<forwarded-gateway-host>
