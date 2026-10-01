@@ -60,7 +60,7 @@ async function saveEntry(key, value, previousKey = null) {
   const response = await fetch(`${API_BASE}/entry`, { method: "POST", credentials: "include", body: new URLSearchParams({ key, value }) });
   if (!response.ok) throw new Error((await response.json()).error || "write failed");
   if (previousKey && previousKey !== key) {
-    const deleteResponse = await fetch(`${API_BASE}/entry?key=${encodeURIComponent(previousKey)}`, { method: "DELETE", credentials: "include" });
+    const deleteResponse = await fetch(`${API_BASE}/entry`, { method: "POST", credentials: "include", body: new URLSearchParams({ action: "delete", key: previousKey }) });
     if (!deleteResponse.ok) throw new Error("new value saved, but old key could not be removed");
   }
   const index = entries.findIndex((entry) => entry.key === (previousKey || key));
@@ -164,7 +164,7 @@ $("#dataRows").addEventListener("click", (event) => {
   if (editKey) openEditor(editKey);
   if (deleteKey) {
     if (!window.confirm(`Delete ${deleteKey}? This writes a delete through Raft.`)) return;
-    fetch(`${API_BASE}/entry?key=${encodeURIComponent(deleteKey)}`, { method: "DELETE", credentials: "include" }).then(async (response) => {
+    fetch(`${API_BASE}/entry`, { method: "POST", credentials: "include", body: new URLSearchParams({ action: "delete", key: deleteKey }) }).then(async (response) => {
       if (!response.ok) throw new Error((await response.json()).error || "delete failed");
       entries = entries.filter((entry) => entry.key !== deleteKey);
       addActivity(deleteKey, "deleted");
@@ -186,12 +186,13 @@ $("#editForm").addEventListener("submit", async (event) => {
 
 $("#entryForm").addEventListener("submit", async (event) => {
   event.preventDefault();
+  const form = event.currentTarget;
   const key = $("#keyInput").value.trim();
   const value = $("#valueInput").value.trim();
   if (!key || !value) return;
   try {
     await saveEntry(key, value);
-    event.currentTarget.reset();
+    form.reset();
     $("#formNote").textContent = `Entry committed for ${key}.`;
   } catch (error) { showGatewayError(error); }
 });
