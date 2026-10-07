@@ -677,8 +677,128 @@ TEST(RaftIntegration, EmptyAppendEntriesPreservesMatchingSuffix) {
     EXPECT_EQ(append_response.match_index(), cluster_response.commit_index());
 }
 
-TEST(RaftIntegration, CompactsCommittedLogIntoSnapshot) {
+uint32_t ComputeCrc32ForTest(const std::string &payload) {
+    constexpr std::uint32_t polynomial = 0xEDB88320u;
+    std::uint32_t crc = 0xFFFFFFFFu;
+    for (unsigned char byte : payload) {
+        crc ^= byte;
+        for (int bit = 0; bit < 8; ++bit) {
+            if (crc & 1u) {
+                crc = (crc >> 1) ^ polynomial;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    return crc ^ 0xFFFFFFFFu;
+}
+
+std::string SerializeSnapshotPayloadForTest(const std::vector<std::pair<std::string, std::string>>& entries) {
+    std::string payload;
+    const std::uint32_t count = static_cast<std::uint32_t>(entries.size());
+    payload.append(reinterpret_cast<const char*>(&count), sizeof(count));
+    for (const auto& [key, value] : entries) {
+        const std::uint32_t key_size = static_cast<std::uint32_t>(key.size());
+        const std::uint32_t value_size = static_cast<std::uint32_t>(value.size());
+        payload.append(reinterpret_cast<const char*>(&key_size), sizeof(key_size));
+        payload.append(reinterpret_cast<const char*>(&value_size), sizeof(value_size));
+        payload.append(key);
+        payload.append(value);
+    }
+    return payload;
+}
+
+TEST(RaftIntegration, WALRecordsIncludeChecksumAndVerifyIntegrity) {
     const std::string port = "18058";
+    const std::string address = "localhost:" + port;
+    const auto data_path = std::filesystem::path("data") / ("node_" + port);
+
+    {
+        TestServer server(port);
+        ASSERT_GT(server.pid, 0);
+        ASSERT_TRUE(WaitForServer(address));
+        ASSERT_TRUE(WaitForLeader(address));
+
+        auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::SetRequest request;
+        request.set_key("wal-corruption-check");
+        request.set_value("must-survive");
+        kvstore::SetResponse response;
+        grpc::ClientContext context;
+        ASSERT_TRUE(stub.Set(&context, request, &response).ok());
+        ASSERT_TRUE(response.success());
+    }
+
+    ASSERT_TRUE(std::filesystem::exists(data_path / "raft.wal"));
+    std::ifstream input(data_path / "raft.wal", std::ios::binary);
+    ASSERT_TRUE(input.is_open());
+
+    std::uint32_t size = 0;
+    std::uint32_t checksum = 0;
+    ASSERT_TRUE(input.read(reinterpret_cast<char *>(&size), sizeof(size)));
+    ASSERT_TRUE(input.read(reinterpret_cast<char *>(&checksum), sizeof(checksum)));
+    ASSERT_GT(size, 0u);
+
+    std::string payload(size, '\0');
+    ASSERT_TRUE(input.read(payload.data(), static_cast<std::streamsize>(size)));
+    EXPECT_EQ(checksum, ComputeCrc32ForTest(payload));
+}
+
+TEST(RaftIntegration, FollowersInstallSnapshotWhenBehind) {
+    const std::string port = "18057";
+    const std::string address = "localhost:" + port;
+
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    auto stub = kvstore::KVStore::NewStub(channel);
+    for (int index = 0; index < 25; ++index) {
+        kvstore::SetRequest request;
+        request.set_key("snapshot-install-" + std::to_string(index));
+        request.set_value("value");
+        request.set_request_id("snapshot-install-" + std::to_string(index));
+        kvstore::SetResponse response;
+        grpc::ClientContext context;
+        ASSERT_TRUE(stub->Set(&context, request, &response).ok());
+        ASSERT_TRUE(response.success());
+    }
+
+    kvstore::InstallSnapshotRequest snapshot_request;
+    snapshot_request.set_leader_term(7);
+    snapshot_request.set_leader_id(50051);
+    snapshot_request.set_last_included_index(24);
+    snapshot_request.set_last_included_term(1);
+    snapshot_request.set_done(true);
+
+    std::vector<std::pair<std::string, std::string>> entries = {
+        {"snapshot-install-0", "value"},
+        {"snapshot-install-1", "value"},
+        {"snapshot-install-2", "value"},
+        {"snapshot-install-3", "value"},
+    };
+    snapshot_request.set_snapshot_data(SerializeSnapshotPayloadForTest(entries));
+
+    kvstore::InstallSnapshotResponse snapshot_response;
+    grpc::ClientContext snapshot_context;
+    ASSERT_TRUE(stub->InstallSnapshot(&snapshot_context, snapshot_request, &snapshot_response).ok());
+    ASSERT_TRUE(snapshot_response.success());
+    EXPECT_EQ(snapshot_response.match_index(), 24);
+
+    kvstore::GetRequest get_request;
+    get_request.set_key("snapshot-install-0");
+    kvstore::GetResponse get_response;
+    grpc::ClientContext get_context;
+    ASSERT_TRUE(stub->Get(&get_context, get_request, &get_response).ok());
+    ASSERT_TRUE(get_response.found());
+    EXPECT_EQ(get_response.value(), "value");
+}
+
+TEST(RaftIntegration, CompactsCommittedLogIntoSnapshot) {
+    const std::string port = "18056";
     const std::string address = "localhost:" + port;
     const auto data_path = std::filesystem::path("data") / ("node_" + port);
 

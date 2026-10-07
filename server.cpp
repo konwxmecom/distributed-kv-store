@@ -9,10 +9,16 @@
 #include <atomic>
 #include <random>
 #include <algorithm>
+#include <cerrno>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <system_error>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <grpcpp/grpcpp.h>
 #include "kvstore.grpc.pb.h"
@@ -227,19 +233,128 @@ private:
     std::ofstream wal;
     TlsConfig tls_config;
 
+    static std::uint32_t ComputeCrc32(const std::string &payload)
+    {
+        constexpr std::uint32_t polynomial = 0xEDB88320u;
+        std::uint32_t crc = 0xFFFFFFFFu;
+        for (const unsigned char byte : payload)
+        {
+            crc ^= byte;
+            for (int bit = 0; bit < 8; ++bit)
+            {
+                if (crc & 1u)
+                    crc = (crc >> 1) ^ polynomial;
+                else
+                    crc >>= 1;
+            }
+        }
+        return crc ^ 0xFFFFFFFFu;
+    }
+
+    static void SyncFilePath(const std::filesystem::path &path)
+    {
+        const int fd = ::open(path.c_str(), O_RDONLY);
+        if (fd < 0)
+            throw std::system_error(errno, std::generic_category(), "failed to open for fsync: " + path.string());
+
+        const int sync_result = ::fsync(fd);
+        const int sync_error = errno;
+        const int close_result = ::close(fd);
+        if (sync_result != 0)
+            throw std::system_error(sync_error, std::generic_category(), "failed to fsync: " + path.string());
+        if (close_result != 0)
+            throw std::system_error(errno, std::generic_category(), "failed to close: " + path.string());
+    }
+
     static bool ReadRecord(std::ifstream &input, std::string &record)
     {
         std::uint32_t size = 0;
+        std::uint32_t checksum = 0;
         input.read(reinterpret_cast<char *>(&size), sizeof(size));
         if (!input)
             return false;
         if (size > 64 * 1024 * 1024)
             throw std::runtime_error("WAL record is unreasonably large");
+        input.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+        if (!input)
+            throw std::runtime_error("WAL contains a truncated checksum");
         record.resize(size);
-        input.read(record.data(), size);
+        input.read(record.data(), static_cast<std::streamsize>(size));
         if (!input)
             throw std::runtime_error("WAL contains a truncated record");
+        if (ComputeCrc32(record) != checksum)
+            return false;
         return true;
+    }
+
+    static std::unordered_map<std::string, std::string> ParseSnapshotPayload(const std::string &payload)
+    {
+        std::unordered_map<std::string, std::string> snapshot;
+        if (payload.empty())
+            return snapshot;
+
+        std::size_t offset = 0;
+        std::uint32_t count = 0;
+        if (payload.size() < sizeof(count))
+            throw std::runtime_error("snapshot payload is truncated");
+        std::memcpy(&count, payload.data() + offset, sizeof(count));
+        offset += sizeof(count);
+
+        for (std::uint32_t i = 0; i < count; ++i)
+        {
+            if (offset + sizeof(std::uint32_t) * 2 > payload.size())
+                throw std::runtime_error("snapshot payload has truncated key/value sizes");
+            std::uint32_t key_size = 0;
+            std::uint32_t value_size = 0;
+            std::memcpy(&key_size, payload.data() + offset, sizeof(key_size));
+            offset += sizeof(key_size);
+            std::memcpy(&value_size, payload.data() + offset, sizeof(value_size));
+            offset += sizeof(value_size);
+
+            if (key_size > 64 * 1024 * 1024 || value_size > 64 * 1024 * 1024)
+                throw std::runtime_error("snapshot payload contains an invalid record size");
+            if (offset + key_size + value_size > payload.size())
+                throw std::runtime_error("snapshot payload is truncated");
+
+            std::string key(payload.data() + offset, key_size);
+            offset += key_size;
+            std::string value(payload.data() + offset, value_size);
+            offset += value_size;
+            snapshot.emplace(std::move(key), std::move(value));
+        }
+        return snapshot;
+    }
+
+    std::string SerializeSnapshotPayload()
+    {
+        std::lock_guard<std::mutex> lock(store_mutex);
+        std::string payload;
+        const std::uint32_t count = static_cast<std::uint32_t>(store.size());
+        payload.append(reinterpret_cast<const char *>(&count), sizeof(count));
+        for (const auto &[key, value] : store)
+        {
+            const std::uint32_t key_size = static_cast<std::uint32_t>(key.size());
+            const std::uint32_t value_size = static_cast<std::uint32_t>(value.size());
+            payload.append(reinterpret_cast<const char *>(&key_size), sizeof(key_size));
+            payload.append(reinterpret_cast<const char *>(&value_size), sizeof(value_size));
+            payload.append(key);
+            payload.append(value);
+        }
+        return payload;
+    }
+
+    static void WriteRecord(std::ofstream &output, const std::filesystem::path &path, const std::string &payload)
+    {
+        const auto size = static_cast<std::uint32_t>(payload.size());
+        const auto checksum = ComputeCrc32(payload);
+        output.clear();
+        output.write(reinterpret_cast<const char *>(&size), sizeof(size));
+        output.write(reinterpret_cast<const char *>(&checksum), sizeof(checksum));
+        output.write(payload.data(), static_cast<std::streamsize>(payload.size()));
+        output.flush();
+        if (!output)
+            throw std::runtime_error("failed to flush WAL");
+        SyncFilePath(path);
     }
 
     void PersistRecord(const LogEntry &entry)
@@ -247,36 +362,30 @@ private:
         std::string serialized;
         if (!entry.SerializeToString(&serialized))
             throw std::runtime_error("failed to serialize WAL record");
-        const auto size = static_cast<std::uint32_t>(serialized.size());
-        wal.write(reinterpret_cast<const char *>(&size), sizeof(size));
-        wal.write(serialized.data(), static_cast<std::streamsize>(serialized.size()));
-        wal.flush();
-        if (!wal)
-            throw std::runtime_error("failed to flush WAL");
+        wal.clear();
+        WriteRecord(wal, data_directory / "raft.wal", serialized);
     }
 
     void RewriteWal()
     {
         const auto wal_path = data_directory / "raft.wal";
-        const auto temporary = data_directory / "raft.wal.tmp";
+        wal.close();
+        wal.clear();
         {
-            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+            std::ofstream output(wal_path, std::ios::binary | std::ios::trunc);
             for (const auto &entry : log_entries)
             {
                 std::string serialized;
                 if (!entry.SerializeToString(&serialized))
                     throw std::runtime_error("failed to serialize WAL record");
-                const auto size = static_cast<std::uint32_t>(serialized.size());
-                output.write(reinterpret_cast<const char *>(&size), sizeof(size));
-                output.write(serialized.data(), static_cast<std::streamsize>(serialized.size()));
+                WriteRecord(output, wal_path, serialized);
             }
             output.flush();
             if (!output)
                 throw std::runtime_error("failed to rewrite WAL");
+            SyncFilePath(wal_path);
         }
-        wal.close();
-        std::filesystem::rename(temporary, wal_path);
-        wal.open(wal_path, std::ios::binary | std::ios::app);
+        wal = std::ofstream(wal_path, std::ios::binary | std::ios::app);
         if (!wal)
             throw std::runtime_error("failed to reopen WAL");
     }
@@ -299,16 +408,45 @@ private:
         const auto wal_path = data_directory / "raft.wal";
         std::ifstream input(wal_path, std::ios::binary);
         std::string record;
-        while (input && ReadRecord(input, record))
+        bool truncated_tail = false;
+        while (input)
         {
+            try
+            {
+                if (!ReadRecord(input, record))
+                {
+                    truncated_tail = true;
+                    break;
+                }
+            }
+            catch (const std::runtime_error &error)
+            {
+                truncated_tail = true;
+                std::cerr << "Ignoring trailing corrupt WAL entry: " << error.what() << std::endl;
+                break;
+            }
+
             LogEntry entry;
             if (!entry.ParseFromString(record))
-                throw std::runtime_error("WAL contains an invalid log entry");
+            {
+                truncated_tail = true;
+                std::cerr << "Ignoring trailing invalid WAL entry" << std::endl;
+                break;
+            }
             log_entries.push_back(std::move(entry));
         }
-        wal.open(wal_path, std::ios::binary | std::ios::app);
-        if (!wal)
-            throw std::runtime_error("failed to open WAL: " + wal_path.string());
+        if (truncated_tail)
+        {
+            input.close();
+            std::cerr << "Truncating corrupt WAL tail and rewriting valid log prefix" << std::endl;
+            RewriteWal();
+        }
+        else
+        {
+            wal.open(wal_path, std::ios::binary | std::ios::app);
+            if (!wal)
+                throw std::runtime_error("failed to open WAL: " + wal_path.string());
+        }
         std::cout << "Recovered " << log_entries.size() << " log entries from "
                   << wal_path << std::endl;
     }
@@ -323,6 +461,7 @@ private:
             metadata.flush();
             if (!metadata)
                 throw std::runtime_error("failed to write Raft metadata");
+            SyncFilePath(temporary);
         }
         std::filesystem::rename(temporary, metadata_path);
     }
@@ -362,6 +501,34 @@ private:
         last_applied = snapshot_last_index;
     }
 
+    void PersistSnapshotState(const std::unordered_map<std::string, std::string> &snapshot_store,
+                             int last_index, int last_term)
+    {
+        const auto snapshot_path = data_directory / "raft.snapshot";
+        const auto temporary = data_directory / "raft.snapshot.tmp";
+        {
+            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+            const auto count = static_cast<std::uint32_t>(snapshot_store.size());
+            output.write(reinterpret_cast<const char *>(&last_index), sizeof(last_index));
+            output.write(reinterpret_cast<const char *>(&last_term), sizeof(last_term));
+            output.write(reinterpret_cast<const char *>(&count), sizeof(count));
+            for (const auto &[key, value] : snapshot_store)
+            {
+                const auto key_size = static_cast<std::uint32_t>(key.size());
+                const auto value_size = static_cast<std::uint32_t>(value.size());
+                output.write(reinterpret_cast<const char *>(&key_size), sizeof(key_size));
+                output.write(reinterpret_cast<const char *>(&value_size), sizeof(value_size));
+                output.write(key.data(), static_cast<std::streamsize>(key.size()));
+                output.write(value.data(), static_cast<std::streamsize>(value.size()));
+            }
+            output.flush();
+            if (!output)
+                throw std::runtime_error("failed to write Raft snapshot");
+            SyncFilePath(temporary);
+        }
+        std::filesystem::rename(temporary, snapshot_path);
+    }
+
     void CompactSnapshot()
     {
         if (commit_index - log_offset < 100)
@@ -376,29 +543,8 @@ private:
                 return;
         }
 
-        const auto snapshot_path = data_directory / "raft.snapshot";
-        const auto temporary = data_directory / "raft.snapshot.tmp";
         const auto snapshot_term = log_entries[target - log_offset].term();
-        {
-            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-            const auto count = static_cast<std::uint32_t>(store.size());
-            output.write(reinterpret_cast<const char *>(&target), sizeof(target));
-            output.write(reinterpret_cast<const char *>(&snapshot_term), sizeof(snapshot_term));
-            output.write(reinterpret_cast<const char *>(&count), sizeof(count));
-            for (const auto &[key, value] : store)
-            {
-                const auto key_size = static_cast<std::uint32_t>(key.size());
-                const auto value_size = static_cast<std::uint32_t>(value.size());
-                output.write(reinterpret_cast<const char *>(&key_size), sizeof(key_size));
-                output.write(reinterpret_cast<const char *>(&value_size), sizeof(value_size));
-                output.write(key.data(), static_cast<std::streamsize>(key.size()));
-                output.write(value.data(), static_cast<std::streamsize>(value.size()));
-            }
-            output.flush();
-            if (!output)
-                throw std::runtime_error("failed to write Raft snapshot");
-        }
-        std::filesystem::rename(temporary, snapshot_path);
+        PersistSnapshotState(store, target, snapshot_term);
 
         log_entries.erase(log_entries.begin(), log_entries.begin() + (target - log_offset + 1));
         log_offset = target + 1;
@@ -437,6 +583,38 @@ private:
     // Sends AppendEntries to a single peer, backing off and retrying with an
     // earlier prevLogIndex whenever the peer reports a log mismatch. This is
     // how a peer that has fallen behind automatically catches up.
+    bool SendInstallSnapshot(size_t peer_idx)
+    {
+        const auto peers = PeerSnapshot();
+        if (peer_idx >= peers.size())
+            return false;
+
+        kvstore::InstallSnapshotRequest req;
+        {
+            std::lock_guard<std::mutex> lock(log_mutex);
+            req.set_leader_term(current_term);
+            req.set_leader_id(node_id);
+            req.set_last_included_index(snapshot_last_index);
+            req.set_last_included_term(snapshot_last_term);
+            req.set_snapshot_data(SerializeSnapshotPayload());
+            req.set_done(true);
+        }
+
+        kvstore::InstallSnapshotResponse resp;
+        ClientContext ctx;
+        ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+        const auto status = peers[peer_idx]->InstallSnapshot(&ctx, req, &resp);
+        if (!status.ok())
+            return false;
+        if (!resp.success())
+            return false;
+
+        std::lock_guard<std::mutex> lock(log_mutex);
+        next_index[peer_idx] = std::max(next_index[peer_idx], snapshot_last_index + 1);
+        match_index[peer_idx] = snapshot_last_index;
+        return true;
+    }
+
     bool SendAppendEntries(size_t peer_idx)
     {
         const auto peers = PeerSnapshot();
@@ -444,8 +622,17 @@ private:
             return false;
         while (true)
         {
-            AppendEntriesRequest req;
             int ni;
+            bool install_snapshot = false;
+            {
+                std::lock_guard<std::mutex> lock(log_mutex);
+                ni = next_index[peer_idx];
+                install_snapshot = ni <= snapshot_last_index;
+            }
+            if (install_snapshot)
+                return SendInstallSnapshot(peer_idx);
+
+            AppendEntriesRequest req;
             {
                 std::lock_guard<std::mutex> lock(log_mutex);
                 ni = next_index[peer_idx];
@@ -725,7 +912,19 @@ public:
                 response->set_success(false);
                 return Status::OK;
             }
-            current_term = request->leader_term();
+            if (request->leader_term() > current_term)
+            {
+                current_term = request->leader_term();
+                voted_for = -1;
+                try
+                {
+                    PersistMetadata();
+                }
+                catch (const std::exception &error)
+                {
+                    return Status(grpc::StatusCode::INTERNAL, error.what());
+                }
+            }
             state = NodeState::FOLLOWER;
             known_leader_id = request->leader_id();
         }
@@ -805,6 +1004,70 @@ public:
         return Status::OK;
     }
 
+    Status InstallSnapshot(ServerContext *context, const kvstore::InstallSnapshotRequest *request, kvstore::InstallSnapshotResponse *response) override
+    {
+        {
+            std::lock_guard<std::mutex> lock(election_mutex);
+            if (request->leader_term() < current_term)
+            {
+                response->set_term(current_term);
+                response->set_success(false);
+                response->set_match_index(snapshot_last_index);
+                return Status::OK;
+            }
+            if (request->leader_term() > current_term)
+            {
+                current_term = request->leader_term();
+                voted_for = -1;
+                try
+                {
+                    PersistMetadata();
+                }
+                catch (const std::exception &error)
+                {
+                    return Status(grpc::StatusCode::INTERNAL, error.what());
+                }
+            }
+            if (request->leader_id() == node_id || peer_stubs.empty())
+            {
+                state = NodeState::LEADER;
+                known_leader_id = node_id;
+            }
+            else
+            {
+                state = NodeState::FOLLOWER;
+                known_leader_id = request->leader_id();
+            }
+        }
+
+        std::unordered_map<std::string, std::string> snapshot_store = ParseSnapshotPayload(request->snapshot_data());
+        {
+            std::lock_guard<std::mutex> lock(log_mutex);
+            if (!log_entries.empty() && log_offset <= request->last_included_index())
+            {
+                const int drop_count = request->last_included_index() - log_offset + 1;
+                log_entries.erase(log_entries.begin(), log_entries.begin() + std::min<int>(drop_count, static_cast<int>(log_entries.size())));
+                log_offset = request->last_included_index() + 1;
+            }
+            snapshot_last_index = request->last_included_index();
+            snapshot_last_term = request->last_included_term();
+            commit_index = std::max(commit_index, snapshot_last_index);
+            last_applied = std::max(last_applied, snapshot_last_index);
+        }
+
+        {
+            std::lock_guard<std::mutex> store_lock(store_mutex);
+            store = std::move(snapshot_store);
+        }
+        PersistSnapshotState(store, snapshot_last_index, snapshot_last_term);
+        RewriteWal();
+
+        response->set_term(current_term);
+        response->set_success(true);
+        response->set_match_index(snapshot_last_index);
+        return Status::OK;
+    }
+
     // Handles a vote request from a candidate.
     Status RequestVote(ServerContext *context, const VoteRequest *request, VoteResponse *response) override
     {
@@ -851,7 +1114,19 @@ public:
         std::lock_guard<std::mutex> lock(election_mutex);
         if (request->leader_term() >= current_term)
         {
-            current_term = request->leader_term();
+            if (request->leader_term() > current_term)
+            {
+                current_term = request->leader_term();
+                voted_for = -1;
+                try
+                {
+                    PersistMetadata();
+                }
+                catch (const std::exception &error)
+                {
+                    return Status(grpc::StatusCode::INTERNAL, error.what());
+                }
+            }
             state = NodeState::FOLLOWER;
         }
         known_leader_id = request->leader_port();
@@ -863,7 +1138,7 @@ public:
 
     Status Get(ServerContext *context, const GetRequest *request, GetResponse *response) override
     {
-        if (state != NodeState::LEADER)
+        if (state != NodeState::LEADER && !peer_stubs.empty())
         {
             if (request->consistency() == kvstore::ReadConsistency::EVENTUAL)
             {
@@ -919,7 +1194,7 @@ public:
 
     Status ListKeys(ServerContext *context, const ListKeysRequest *request, ListKeysResponse *response) override
     {
-        if (state != NodeState::LEADER)
+        if (state != NodeState::LEADER && !peer_stubs.empty())
         {
             if (request->consistency() == kvstore::ReadConsistency::EVENTUAL)
             {
@@ -993,7 +1268,7 @@ public:
             return Status::OK;
         }
 
-        if (state != NodeState::LEADER)
+        if (state != NodeState::LEADER && !peer_stubs.empty())
         {
             auto leader_stub = FindLeaderStub();
             if (leader_stub)
@@ -1046,7 +1321,7 @@ public:
             return Status::OK;
         }
 
-        if (state != NodeState::LEADER)
+        if (state != NodeState::LEADER && !peer_stubs.empty())
         {
             auto leader_stub = FindLeaderStub();
             if (leader_stub)

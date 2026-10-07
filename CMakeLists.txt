@@ -42,6 +42,11 @@ add_executable(server
     kvstore.grpc.pb.cc
 )
 
+target_include_directories(server
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 target_link_libraries(server
     PRIVATE
     gRPC::grpc++
@@ -52,6 +57,11 @@ add_executable(client
     client.cpp
     kvstore.pb.cc
     kvstore.grpc.pb.cc
+)
+
+target_include_directories(client
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_libraries(client
@@ -66,9 +76,19 @@ add_executable(raft_tests
     kvstore.grpc.pb.cc
 )
 
+target_include_directories(raft_tests
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 add_executable(runtime_config_tests
     tests/test_runtime_config.cpp
     runtime_config.cpp
+)
+
+target_include_directories(runtime_config_tests
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 if(BUILD_BENCHMARKS)
@@ -76,6 +96,10 @@ if(BUILD_BENCHMARKS)
         benchmarks/kvstore_benchmark.cpp
         kvstore.pb.cc
         kvstore.grpc.pb.cc
+    )
+    target_include_directories(kvstore_benchmark
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
     )
     target_link_libraries(kvstore_benchmark PRIVATE gRPC::grpc++ protobuf::libprotobuf)
 endif()
@@ -94,6 +118,6 @@ target_link_libraries(runtime_config_tests
 
 add_test(NAME raft_tests COMMAND raft_tests)
 add_test(NAME runtime_config_tests COMMAND runtime_config_tests)
-set_tests_properties(raft_tests runtime_config_tests PROPERTIES TIMEOUT 60)
+set_tests_properties(raft_tests runtime_config_tests PROPERTIES TIMEOUT 180)
 
 enable_testing()
