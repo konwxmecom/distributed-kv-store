@@ -609,6 +609,7 @@ class SetRequest final :
   enum : int {
     kKeyFieldNumber = 1,
     kValueFieldNumber = 2,
+    kRequestIdFieldNumber = 3,
   };
   // string key = 1;
   void clear_key();
@@ -638,6 +639,20 @@ class SetRequest final :
   std::string* _internal_mutable_value();
   public:
 
+  // string request_id = 3;
+  void clear_request_id();
+  const std::string& request_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_request_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_request_id();
+  PROTOBUF_NODISCARD std::string* release_request_id();
+  void set_allocated_request_id(std::string* request_id);
+  private:
+  const std::string& _internal_request_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_request_id(const std::string& value);
+  std::string* _internal_mutable_request_id();
+  public:
+
   // @@protoc_insertion_point(class_scope:kvstore.SetRequest)
  private:
   class _Internal;
@@ -648,6 +663,7 @@ class SetRequest final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr key_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr value_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr request_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -776,9 +792,24 @@ class SetResponse final :
   // accessors -------------------------------------------------------
 
   enum : int {
+    kRequestIdFieldNumber = 3,
     kSuccessFieldNumber = 1,
     kLeaderIdFieldNumber = 2,
   };
+  // string request_id = 3;
+  void clear_request_id();
+  const std::string& request_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_request_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_request_id();
+  PROTOBUF_NODISCARD std::string* release_request_id();
+  void set_allocated_request_id(std::string* request_id);
+  private:
+  const std::string& _internal_request_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_request_id(const std::string& value);
+  std::string* _internal_mutable_request_id();
+  public:
+
   // bool success = 1;
   void clear_success();
   bool success() const;
@@ -805,6 +836,7 @@ class SetResponse final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr request_id_;
     bool success_;
     int32_t leader_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
@@ -936,6 +968,7 @@ class DeleteRequest final :
 
   enum : int {
     kKeyFieldNumber = 1,
+    kRequestIdFieldNumber = 2,
   };
   // string key = 1;
   void clear_key();
@@ -951,6 +984,20 @@ class DeleteRequest final :
   std::string* _internal_mutable_key();
   public:
 
+  // string request_id = 2;
+  void clear_request_id();
+  const std::string& request_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_request_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_request_id();
+  PROTOBUF_NODISCARD std::string* release_request_id();
+  void set_allocated_request_id(std::string* request_id);
+  private:
+  const std::string& _internal_request_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_request_id(const std::string& value);
+  std::string* _internal_mutable_request_id();
+  public:
+
   // @@protoc_insertion_point(class_scope:kvstore.DeleteRequest)
  private:
   class _Internal;
@@ -960,6 +1007,7 @@ class DeleteRequest final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr key_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr request_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -1088,9 +1136,24 @@ class DeleteResponse final :
   // accessors -------------------------------------------------------
 
   enum : int {
+    kRequestIdFieldNumber = 3,
     kSuccessFieldNumber = 1,
     kLeaderIdFieldNumber = 2,
   };
+  // string request_id = 3;
+  void clear_request_id();
+  const std::string& request_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_request_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_request_id();
+  PROTOBUF_NODISCARD std::string* release_request_id();
+  void set_allocated_request_id(std::string* request_id);
+  private:
+  const std::string& _internal_request_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_request_id(const std::string& value);
+  std::string* _internal_mutable_request_id();
+  public:
+
   // bool success = 1;
   void clear_success();
   bool success() const;
@@ -1117,6 +1180,7 @@ class DeleteResponse final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr request_id_;
     bool success_;
     int32_t leader_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
@@ -3244,6 +3308,56 @@ inline void SetRequest::set_allocated_value(std::string* value) {
   // @@protoc_insertion_point(field_set_allocated:kvstore.SetRequest.value)
 }
 
+// string request_id = 3;
+inline void SetRequest::clear_request_id() {
+  _impl_.request_id_.ClearToEmpty();
+}
+inline const std::string& SetRequest::request_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.SetRequest.request_id)
+  return _internal_request_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void SetRequest::set_request_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.request_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:kvstore.SetRequest.request_id)
+}
+inline std::string* SetRequest::mutable_request_id() {
+  std::string* _s = _internal_mutable_request_id();
+  // @@protoc_insertion_point(field_mutable:kvstore.SetRequest.request_id)
+  return _s;
+}
+inline const std::string& SetRequest::_internal_request_id() const {
+  return _impl_.request_id_.Get();
+}
+inline void SetRequest::_internal_set_request_id(const std::string& value) {
+  
+  _impl_.request_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* SetRequest::_internal_mutable_request_id() {
+  
+  return _impl_.request_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* SetRequest::release_request_id() {
+  // @@protoc_insertion_point(field_release:kvstore.SetRequest.request_id)
+  return _impl_.request_id_.Release();
+}
+inline void SetRequest::set_allocated_request_id(std::string* request_id) {
+  if (request_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.request_id_.SetAllocated(request_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.request_id_.IsDefault()) {
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:kvstore.SetRequest.request_id)
+}
+
 // -------------------------------------------------------------------
 
 // SetResponse
@@ -3286,6 +3400,56 @@ inline void SetResponse::_internal_set_leader_id(int32_t value) {
 inline void SetResponse::set_leader_id(int32_t value) {
   _internal_set_leader_id(value);
   // @@protoc_insertion_point(field_set:kvstore.SetResponse.leader_id)
+}
+
+// string request_id = 3;
+inline void SetResponse::clear_request_id() {
+  _impl_.request_id_.ClearToEmpty();
+}
+inline const std::string& SetResponse::request_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.SetResponse.request_id)
+  return _internal_request_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void SetResponse::set_request_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.request_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:kvstore.SetResponse.request_id)
+}
+inline std::string* SetResponse::mutable_request_id() {
+  std::string* _s = _internal_mutable_request_id();
+  // @@protoc_insertion_point(field_mutable:kvstore.SetResponse.request_id)
+  return _s;
+}
+inline const std::string& SetResponse::_internal_request_id() const {
+  return _impl_.request_id_.Get();
+}
+inline void SetResponse::_internal_set_request_id(const std::string& value) {
+  
+  _impl_.request_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* SetResponse::_internal_mutable_request_id() {
+  
+  return _impl_.request_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* SetResponse::release_request_id() {
+  // @@protoc_insertion_point(field_release:kvstore.SetResponse.request_id)
+  return _impl_.request_id_.Release();
+}
+inline void SetResponse::set_allocated_request_id(std::string* request_id) {
+  if (request_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.request_id_.SetAllocated(request_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.request_id_.IsDefault()) {
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:kvstore.SetResponse.request_id)
 }
 
 // -------------------------------------------------------------------
@@ -3342,6 +3506,56 @@ inline void DeleteRequest::set_allocated_key(std::string* key) {
   // @@protoc_insertion_point(field_set_allocated:kvstore.DeleteRequest.key)
 }
 
+// string request_id = 2;
+inline void DeleteRequest::clear_request_id() {
+  _impl_.request_id_.ClearToEmpty();
+}
+inline const std::string& DeleteRequest::request_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.DeleteRequest.request_id)
+  return _internal_request_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void DeleteRequest::set_request_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.request_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:kvstore.DeleteRequest.request_id)
+}
+inline std::string* DeleteRequest::mutable_request_id() {
+  std::string* _s = _internal_mutable_request_id();
+  // @@protoc_insertion_point(field_mutable:kvstore.DeleteRequest.request_id)
+  return _s;
+}
+inline const std::string& DeleteRequest::_internal_request_id() const {
+  return _impl_.request_id_.Get();
+}
+inline void DeleteRequest::_internal_set_request_id(const std::string& value) {
+  
+  _impl_.request_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* DeleteRequest::_internal_mutable_request_id() {
+  
+  return _impl_.request_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* DeleteRequest::release_request_id() {
+  // @@protoc_insertion_point(field_release:kvstore.DeleteRequest.request_id)
+  return _impl_.request_id_.Release();
+}
+inline void DeleteRequest::set_allocated_request_id(std::string* request_id) {
+  if (request_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.request_id_.SetAllocated(request_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.request_id_.IsDefault()) {
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:kvstore.DeleteRequest.request_id)
+}
+
 // -------------------------------------------------------------------
 
 // DeleteResponse
@@ -3384,6 +3598,56 @@ inline void DeleteResponse::_internal_set_leader_id(int32_t value) {
 inline void DeleteResponse::set_leader_id(int32_t value) {
   _internal_set_leader_id(value);
   // @@protoc_insertion_point(field_set:kvstore.DeleteResponse.leader_id)
+}
+
+// string request_id = 3;
+inline void DeleteResponse::clear_request_id() {
+  _impl_.request_id_.ClearToEmpty();
+}
+inline const std::string& DeleteResponse::request_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.DeleteResponse.request_id)
+  return _internal_request_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void DeleteResponse::set_request_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.request_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:kvstore.DeleteResponse.request_id)
+}
+inline std::string* DeleteResponse::mutable_request_id() {
+  std::string* _s = _internal_mutable_request_id();
+  // @@protoc_insertion_point(field_mutable:kvstore.DeleteResponse.request_id)
+  return _s;
+}
+inline const std::string& DeleteResponse::_internal_request_id() const {
+  return _impl_.request_id_.Get();
+}
+inline void DeleteResponse::_internal_set_request_id(const std::string& value) {
+  
+  _impl_.request_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* DeleteResponse::_internal_mutable_request_id() {
+  
+  return _impl_.request_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* DeleteResponse::release_request_id() {
+  // @@protoc_insertion_point(field_release:kvstore.DeleteResponse.request_id)
+  return _impl_.request_id_.Release();
+}
+inline void DeleteResponse::set_allocated_request_id(std::string* request_id) {
+  if (request_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.request_id_.SetAllocated(request_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.request_id_.IsDefault()) {
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:kvstore.DeleteResponse.request_id)
 }
 
 // -------------------------------------------------------------------

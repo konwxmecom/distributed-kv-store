@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <memory>
@@ -44,6 +45,7 @@ class KVStoreClient
 private:
     std::shared_ptr<Channel> channel_;
     std::unique_ptr<KVStore::Stub> stub_;
+    std::string current_address_;
 
     template <typename Request, typename Response>
     bool TryCall(const std::string &method_name,
@@ -60,23 +62,53 @@ private:
         return false;
     }
 
+    void ReconnectToLeader(int leader_port)
+    {
+        const auto next_address = "localhost:" + std::to_string(leader_port);
+        if (next_address == current_address_)
+            return;
+        current_address_ = next_address;
+        channel_ = grpc::CreateChannel(next_address, grpc::InsecureChannelCredentials());
+        stub_ = KVStore::NewStub(channel_);
+    }
+
 public:
-    explicit KVStoreClient(std::shared_ptr<Channel> channel)
-        : channel_(std::move(channel)), stub_(KVStore::NewStub(channel_)) {}
+    explicit KVStoreClient(std::shared_ptr<Channel> channel, std::string initial_address = "")
+        : channel_(std::move(channel)), stub_(KVStore::NewStub(channel_)), current_address_(std::move(initial_address))
+    {
+        if (current_address_.empty())
+            current_address_ = "localhost:50051";
+    }
 
     bool Set(const std::string &key, const std::string &value)
     {
-        SetRequest request;
-        request.set_key(key);
-        request.set_value(value);
+        const std::string request_id = "client-set-" +
+            std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count());
 
-        SetResponse response;
-        grpc::ClientContext context;
-        Status status = stub_->Set(&context, request, &response);
-        if (status.ok())
-            return response.success();
+        for (int attempt = 0; attempt < 3; ++attempt)
+        {
+            SetRequest request;
+            request.set_key(key);
+            request.set_value(value);
+            request.set_request_id(request_id);
 
-        std::cout << "Set failed: " << status.error_message() << std::endl;
+            SetResponse response;
+            grpc::ClientContext context;
+            const Status status = stub_->Set(&context, request, &response);
+            if (status.ok())
+            {
+                if (response.leader_id() > 0 && response.leader_id() != std::stoi(current_address_.substr(current_address_.find(':') + 1)))
+                {
+                    ReconnectToLeader(response.leader_id());
+                    continue;
+                }
+                return response.success();
+            }
+
+            std::cout << "Set failed: " << status.error_message() << std::endl;
+            break;
+        }
         return false;
     }
 

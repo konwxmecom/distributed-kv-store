@@ -43,20 +43,24 @@ message GetResponse {
 message SetRequest {
     string key = 1;
     string value = 2;
+    string request_id = 3;
 }
 
 message SetResponse {
     bool success = 1;
     int32 leader_id = 2;
+    string request_id = 3;
 }
 
 message DeleteRequest {
     string key = 1;
+    string request_id = 2;
 }
 
 message DeleteResponse {
     bool success = 1;
     int32 leader_id = 2;
+    string request_id = 3;
 }
 
 message ListKeysRequest {

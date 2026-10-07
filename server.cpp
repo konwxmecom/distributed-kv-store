@@ -80,6 +80,35 @@ private:
     std::unordered_map<std::string, std::string> store;
     std::mutex store_mutex;
 
+    struct WriteRequestResult {
+        bool success = false;
+        int leader_id = -1;
+    };
+
+    std::unordered_map<std::string, WriteRequestResult> completed_write_requests;
+    std::mutex request_cache_mutex;
+
+    bool TryReplayRequest(const std::string &request_id, WriteRequestResult *result)
+    {
+        if (request_id.empty())
+            return false;
+        std::lock_guard<std::mutex> lock(request_cache_mutex);
+        const auto it = completed_write_requests.find(request_id);
+        if (it == completed_write_requests.end())
+            return false;
+        if (result)
+            *result = it->second;
+        return true;
+    }
+
+    void RecordWriteRequestResult(const std::string &request_id, bool success, int leader_id)
+    {
+        if (request_id.empty())
+            return;
+        std::lock_guard<std::mutex> lock(request_cache_mutex);
+        completed_write_requests[request_id] = WriteRequestResult{success, leader_id};
+    }
+
     // Outbound connections to every other node in the cluster.
     std::vector<std::shared_ptr<KVStore::Stub>> peer_stubs;
     std::vector<std::string> peer_addresses;
@@ -955,6 +984,15 @@ public:
 
     Status Set(ServerContext *context, const SetRequest *request, SetResponse *response) override
     {
+        WriteRequestResult replay_result;
+        if (TryReplayRequest(request->request_id(), &replay_result))
+        {
+            response->set_success(replay_result.success);
+            response->set_leader_id(replay_result.leader_id);
+            response->set_request_id(request->request_id());
+            return Status::OK;
+        }
+
         if (state != NodeState::LEADER)
         {
             auto leader_stub = FindLeaderStub();
@@ -971,6 +1009,7 @@ public:
                         std::cerr << "Leader rejected forwarded write from node " << node_id << std::endl;
                     response->set_success(forwarded_response.success());
                     response->set_leader_id(forwarded_response.leader_id());
+                    response->set_request_id(forwarded_response.request_id());
                     return Status::OK;
                 }
                 std::cerr << "Forwarded write from node " << node_id << " failed: "
@@ -980,6 +1019,7 @@ public:
                 std::cerr << "No leader found while forwarding write from node " << node_id << std::endl;
             response->set_success(false);
             response->set_leader_id(known_leader_id);
+            response->set_request_id(request->request_id());
             return Status::OK;
         }
 
@@ -987,13 +1027,25 @@ public:
         entry.set_term(current_term);
         entry.set_key(request->key());
         entry.set_value(request->value());
-        response->set_success(CommitEntry(entry));
+        const bool success = CommitEntry(entry);
+        RecordWriteRequestResult(request->request_id(), success, node_id);
+        response->set_success(success);
         response->set_leader_id(node_id);
+        response->set_request_id(request->request_id());
         return Status::OK;
     }
 
     Status Delete(ServerContext *context, const DeleteRequest *request, DeleteResponse *response) override
     {
+        WriteRequestResult replay_result;
+        if (TryReplayRequest(request->request_id(), &replay_result))
+        {
+            response->set_success(replay_result.success);
+            response->set_leader_id(replay_result.leader_id);
+            response->set_request_id(request->request_id());
+            return Status::OK;
+        }
+
         if (state != NodeState::LEADER)
         {
             auto leader_stub = FindLeaderStub();
@@ -1008,11 +1060,13 @@ public:
                 {
                     response->set_success(forwarded_response.success());
                     response->set_leader_id(forwarded_response.leader_id());
+                    response->set_request_id(forwarded_response.request_id());
                     return Status::OK;
                 }
             }
             response->set_success(false);
             response->set_leader_id(known_leader_id);
+            response->set_request_id(request->request_id());
             return Status::OK;
         }
 
@@ -1020,8 +1074,11 @@ public:
         entry.set_term(current_term);
         entry.set_key(request->key());
         entry.set_value(kDeleteMarker);
-        response->set_success(CommitEntry(entry));
+        const bool success = CommitEntry(entry);
+        RecordWriteRequestResult(request->request_id(), success, node_id);
+        response->set_success(success);
         response->set_leader_id(node_id);
+        response->set_request_id(request->request_id());
         return Status::OK;
     }
 };

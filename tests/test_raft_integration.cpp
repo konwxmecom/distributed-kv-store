@@ -430,6 +430,44 @@ TEST(RaftIntegration, FollowerRepliesIncludeLeaderHint) {
     EXPECT_EQ(set_response.leader_id(), std::stoi(leader_port));
 }
 
+TEST(RaftIntegration, DuplicateWriteRequestsWithSameIdAreIdempotent) {
+    const std::string port = "18069";
+    const std::string address = "localhost:" + port;
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+
+    kvstore::SetRequest first;
+    first.set_key("idempotent-key");
+    first.set_value("first-value");
+    first.set_request_id("retry-1");
+    kvstore::SetResponse first_response;
+    grpc::ClientContext first_context;
+    ASSERT_TRUE(stub.Set(&first_context, first, &first_response).ok());
+    ASSERT_TRUE(first_response.success());
+
+    kvstore::SetRequest duplicate;
+    duplicate.set_key("idempotent-key");
+    duplicate.set_value("second-value");
+    duplicate.set_request_id("retry-1");
+    kvstore::SetResponse duplicate_response;
+    grpc::ClientContext duplicate_context;
+    ASSERT_TRUE(stub.Set(&duplicate_context, duplicate, &duplicate_response).ok());
+    ASSERT_TRUE(duplicate_response.success());
+
+    kvstore::GetRequest get_request;
+    get_request.set_key("idempotent-key");
+    kvstore::GetResponse get_response;
+    grpc::ClientContext get_context;
+    ASSERT_TRUE(stub.Get(&get_context, get_request, &get_response).ok());
+    ASSERT_TRUE(get_response.found());
+    EXPECT_EQ(get_response.value(), "first-value");
+}
+
 TEST(RaftIntegration, RejectsVoteFromCandidateWithStaleLog) {
     const std::vector<std::string> ports = {"18060", "18061", "18062"};
     for (const auto& port : ports) {
