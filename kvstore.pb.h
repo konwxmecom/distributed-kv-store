@@ -2077,6 +2077,8 @@ class VoteRequest final :
   enum : int {
     kCandidateTermFieldNumber = 1,
     kCandidateIdFieldNumber = 2,
+    kCandidateLastLogIndexFieldNumber = 3,
+    kCandidateLastLogTermFieldNumber = 4,
   };
   // int32 candidate_term = 1;
   void clear_candidate_term();
@@ -2096,6 +2098,24 @@ class VoteRequest final :
   void _internal_set_candidate_id(int32_t value);
   public:
 
+  // int32 candidate_last_log_index = 3;
+  void clear_candidate_last_log_index();
+  int32_t candidate_last_log_index() const;
+  void set_candidate_last_log_index(int32_t value);
+  private:
+  int32_t _internal_candidate_last_log_index() const;
+  void _internal_set_candidate_last_log_index(int32_t value);
+  public:
+
+  // int32 candidate_last_log_term = 4;
+  void clear_candidate_last_log_term();
+  int32_t candidate_last_log_term() const;
+  void set_candidate_last_log_term(int32_t value);
+  private:
+  int32_t _internal_candidate_last_log_term() const;
+  void _internal_set_candidate_last_log_term(int32_t value);
+  public:
+
   // @@protoc_insertion_point(class_scope:kvstore.VoteRequest)
  private:
   class _Internal;
@@ -2106,6 +2126,8 @@ class VoteRequest final :
   struct Impl_ {
     int32_t candidate_term_;
     int32_t candidate_id_;
+    int32_t candidate_last_log_index_;
+    int32_t candidate_last_log_term_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -3474,6 +3496,46 @@ inline void VoteRequest::_internal_set_candidate_id(int32_t value) {
 inline void VoteRequest::set_candidate_id(int32_t value) {
   _internal_set_candidate_id(value);
   // @@protoc_insertion_point(field_set:kvstore.VoteRequest.candidate_id)
+}
+
+// int32 candidate_last_log_index = 3;
+inline void VoteRequest::clear_candidate_last_log_index() {
+  _impl_.candidate_last_log_index_ = 0;
+}
+inline int32_t VoteRequest::_internal_candidate_last_log_index() const {
+  return _impl_.candidate_last_log_index_;
+}
+inline int32_t VoteRequest::candidate_last_log_index() const {
+  // @@protoc_insertion_point(field_get:kvstore.VoteRequest.candidate_last_log_index)
+  return _internal_candidate_last_log_index();
+}
+inline void VoteRequest::_internal_set_candidate_last_log_index(int32_t value) {
+
+  _impl_.candidate_last_log_index_ = value;
+}
+inline void VoteRequest::set_candidate_last_log_index(int32_t value) {
+  _internal_set_candidate_last_log_index(value);
+  // @@protoc_insertion_point(field_set:kvstore.VoteRequest.candidate_last_log_index)
+}
+
+// int32 candidate_last_log_term = 4;
+inline void VoteRequest::clear_candidate_last_log_term() {
+  _impl_.candidate_last_log_term_ = 0;
+}
+inline int32_t VoteRequest::_internal_candidate_last_log_term() const {
+  return _impl_.candidate_last_log_term_;
+}
+inline int32_t VoteRequest::candidate_last_log_term() const {
+  // @@protoc_insertion_point(field_get:kvstore.VoteRequest.candidate_last_log_term)
+  return _internal_candidate_last_log_term();
+}
+inline void VoteRequest::_internal_set_candidate_last_log_term(int32_t value) {
+
+  _impl_.candidate_last_log_term_ = value;
+}
+inline void VoteRequest::set_candidate_last_log_term(int32_t value) {
+  _internal_set_candidate_last_log_term(value);
+  // @@protoc_insertion_point(field_set:kvstore.VoteRequest.candidate_last_log_term)
 }
 
 // -------------------------------------------------------------------

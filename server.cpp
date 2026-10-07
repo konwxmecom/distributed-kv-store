@@ -480,12 +480,21 @@ private:
 
         int votes = 1; // vote for self
         int my_term = current_term;
+        int candidate_last_log_index;
+        int candidate_last_log_term;
+        {
+            std::lock_guard<std::mutex> lock(log_mutex);
+            candidate_last_log_index = log_offset + static_cast<int>(log_entries.size()) - 1;
+            candidate_last_log_term = log_entries.empty() ? snapshot_last_term : log_entries.back().term();
+        }
 
         for (auto &stub : PeerSnapshot())
         {
             VoteRequest req;
             req.set_candidate_term(my_term);
             req.set_candidate_id(node_id);
+            req.set_candidate_last_log_index(candidate_last_log_index);
+            req.set_candidate_last_log_term(candidate_last_log_term);
             VoteResponse resp;
             ClientContext ctx;
             Status status = stub->RequestVote(&ctx, req, &resp);
@@ -736,8 +745,20 @@ public:
             PersistMetadata();
             state = NodeState::FOLLOWER;
         }
+        int last_log_index;
+        int last_log_term;
+        {
+            std::lock_guard<std::mutex> log_lock(log_mutex);
+            last_log_index = log_offset + static_cast<int>(log_entries.size()) - 1;
+            last_log_term = log_entries.empty() ? snapshot_last_term : log_entries.back().term();
+        }
+        const bool candidate_log_is_up_to_date =
+            request->candidate_last_log_term() > last_log_term ||
+            (request->candidate_last_log_term() == last_log_term &&
+             request->candidate_last_log_index() >= last_log_index);
         bool grant = false;
         if (request->candidate_term() >= current_term &&
+            candidate_log_is_up_to_date &&
             (voted_for == -1 || voted_for == request->candidate_id()))
         {
             grant = true;

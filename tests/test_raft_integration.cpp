@@ -131,6 +131,28 @@ struct TestServer {
     pid_t pid;
 };
 
+struct TestCluster {
+    explicit TestCluster(const std::vector<std::string>& ports) {
+        for (const auto& port : ports) {
+            std::vector<std::string> peers;
+            for (const auto& peer_port : ports) {
+                if (peer_port != port) {
+                    peers.push_back("localhost:" + peer_port);
+                }
+            }
+            pids.push_back(StartServer(port, peers));
+        }
+    }
+
+    ~TestCluster() {
+        for (const auto pid : pids) {
+            StopServer(pid);
+        }
+    }
+
+    std::vector<pid_t> pids;
+};
+
 TEST(RaftIntegration, LeaderSetAndGetRoundTrip) {
     const std::string port = "18051";
     const std::string address = "localhost:" + port;
@@ -353,6 +375,50 @@ TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
     waitpid(leader_pid, nullptr, 0);
     waitpid(follower_pid, nullptr, 0);
     waitpid(third_pid, nullptr, 0);
+}
+
+TEST(RaftIntegration, RejectsVoteFromCandidateWithStaleLog) {
+    const std::vector<std::string> ports = {"18060", "18061", "18062"};
+    for (const auto& port : ports) {
+        std::error_code error;
+        std::filesystem::remove_all(std::filesystem::path("data") / ("node_" + port), error);
+    }
+    TestCluster cluster(ports);
+    for (const auto& port : ports) {
+        ASSERT_TRUE(WaitForServer("localhost:" + port));
+    }
+    ASSERT_TRUE(WaitForLeader("localhost:" + ports.front()));
+
+    std::string voter_address;
+    kvstore::ClusterStatusResponse voter_status;
+    for (const auto& port : ports) {
+        const auto address = "localhost:" + port;
+        auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::ClusterStatusRequest status_request;
+        kvstore::ClusterStatusResponse status_response;
+        grpc::ClientContext status_context;
+        ASSERT_TRUE(stub.GetClusterStatus(&status_context, status_request, &status_response).ok());
+        if (!status_response.is_leader()) {
+            voter_address = address;
+            voter_status = status_response;
+            break;
+        }
+    }
+    ASSERT_FALSE(voter_address.empty());
+    ASSERT_GE(voter_status.commit_index(), 0);
+
+    auto voter_channel = grpc::CreateChannel(voter_address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub voter_stub(voter_channel);
+    kvstore::VoteRequest vote_request;
+    vote_request.set_candidate_term(voter_status.current_term() + 1);
+    vote_request.set_candidate_id(18063);
+    vote_request.set_candidate_last_log_index(-1);
+    vote_request.set_candidate_last_log_term(0);
+    kvstore::VoteResponse vote_response;
+    grpc::ClientContext vote_context;
+    ASSERT_TRUE(voter_stub.RequestVote(&vote_context, vote_request, &vote_response).ok());
+    EXPECT_FALSE(vote_response.vote_granted());
 }
 
 TEST(RaftIntegration, EmptyAppendEntriesPreservesMatchingSuffix) {

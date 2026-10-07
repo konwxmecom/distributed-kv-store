@@ -82,6 +82,8 @@ message HeartbeatResponse {
 message VoteRequest {
     int32 candidate_term = 1;  // the term the candidate is running for
     int32 candidate_id = 2;    // candidate's unique identifier (its port number)
+    int32 candidate_last_log_index = 3;
+    int32 candidate_last_log_term = 4;
 }
 
 message VoteResponse {
