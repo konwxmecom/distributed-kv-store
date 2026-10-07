@@ -421,6 +421,134 @@ TEST(RaftIntegration, RejectsVoteFromCandidateWithStaleLog) {
     EXPECT_FALSE(vote_response.vote_granted());
 }
 
+TEST(RaftIntegration, FollowersReportCurrentLeaderId) {
+    const std::vector<std::string> ports = {"18063", "18064", "18065"};
+    for (const auto& port : ports) {
+        std::error_code error;
+        std::filesystem::remove_all(std::filesystem::path("data") / ("node_" + port), error);
+    }
+
+    TestCluster cluster(ports);
+    for (const auto& port : ports) {
+        ASSERT_TRUE(WaitForServer("localhost:" + port));
+    }
+    ASSERT_TRUE(WaitForLeader("localhost:" + ports.front()));
+
+    std::string leader_port;
+    std::vector<std::string> follower_ports;
+    for (const auto& port : ports) {
+        auto channel = grpc::CreateChannel("localhost:" + port, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::ClusterStatusRequest request;
+        kvstore::ClusterStatusResponse response;
+        grpc::ClientContext context;
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+        ASSERT_TRUE(stub.GetClusterStatus(&context, request, &response).ok());
+        if (response.is_leader()) {
+            leader_port = port;
+        } else {
+            follower_ports.push_back(port);
+        }
+    }
+    ASSERT_FALSE(leader_port.empty());
+    ASSERT_FALSE(follower_ports.empty());
+
+    for (const auto& port : follower_ports) {
+        auto channel = grpc::CreateChannel("localhost:" + port, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::ClusterStatusRequest request;
+        kvstore::ClusterStatusResponse response;
+        grpc::ClientContext context;
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+        ASSERT_TRUE(stub.GetClusterStatus(&context, request, &response).ok());
+        EXPECT_EQ(response.leader_id(), std::stoi(leader_port));
+        EXPECT_FALSE(response.is_leader());
+    }
+}
+
+TEST(RaftIntegration, LeaderStepsDownWhenItLosesQuorum) {
+    const std::vector<std::string> ports = {"18064", "18065", "18066"};
+    for (const auto& port : ports) {
+        std::error_code error;
+        std::filesystem::remove_all(std::filesystem::path("data") / ("node_" + port), error);
+    }
+
+    std::vector<pid_t> pids;
+    for (const auto& port : ports) {
+        std::vector<std::string> peers;
+        for (const auto& peer_port : ports) {
+            if (peer_port != port) {
+                peers.push_back("localhost:" + peer_port);
+            }
+        }
+        pids.push_back(StartServer(port, peers));
+    }
+
+    for (const auto& port : ports) {
+        ASSERT_TRUE(WaitForServer("localhost:" + port));
+    }
+
+    std::string leader_address;
+    for (const auto& port : ports) {
+        auto channel = grpc::CreateChannel("localhost:" + port, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::ClusterStatusRequest request;
+        kvstore::ClusterStatusResponse response;
+        grpc::ClientContext context;
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(2));
+        if (stub.GetClusterStatus(&context, request, &response).ok() && response.is_leader()) {
+            leader_address = "localhost:" + port;
+            break;
+        }
+    }
+    ASSERT_FALSE(leader_address.empty());
+
+    std::string leader_port = leader_address.substr(leader_address.find(':') + 1);
+    std::vector<std::string> followers;
+    for (const auto& port : ports) {
+        if (port != leader_port) {
+            followers.push_back(port);
+        }
+    }
+    ASSERT_EQ(followers.size(), 2);
+
+    for (const auto& follower_port : followers) {
+        const auto follower_pid = std::stoi(follower_port) == 18064 ? pids[0] :
+                                 (std::stoi(follower_port) == 18065 ? pids[1] : pids[2]);
+        kill(follower_pid, SIGTERM);
+    }
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (std::chrono::steady_clock::now() < deadline) {
+        auto channel = grpc::CreateChannel(leader_address, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::ClusterStatusRequest request;
+        kvstore::ClusterStatusResponse response;
+        grpc::ClientContext context;
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(2));
+        if (stub.GetClusterStatus(&context, request, &response).ok() && !response.is_leader()) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    auto channel = grpc::CreateChannel(leader_address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+    kvstore::ClusterStatusRequest request;
+    kvstore::ClusterStatusResponse response;
+    grpc::ClientContext context;
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(2));
+    ASSERT_TRUE(stub.GetClusterStatus(&context, request, &response).ok());
+    EXPECT_FALSE(response.is_leader());
+
+    for (const auto pid : pids) {
+        if (pid > 0) {
+            kill(pid, SIGTERM);
+            waitpid(pid, nullptr, 0);
+        }
+    }
+}
+
 TEST(RaftIntegration, EmptyAppendEntriesPreservesMatchingSuffix) {
     const std::string port = "18059";
     const std::string address = "localhost:" + port;

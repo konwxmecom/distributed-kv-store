@@ -175,6 +175,7 @@ private:
     std::atomic<NodeState> state{NodeState::FOLLOWER};
     int current_term = 0;
     int voted_for = -1;
+    int known_leader_id = -1;
     int node_id;
     std::mutex election_mutex;
 
@@ -513,6 +514,7 @@ private:
         if (votes >= majority)
         {
             state = NodeState::LEADER;
+            known_leader_id = node_id;
             std::cout << "*** BECAME LEADER for term " << current_term
                       << " with " << votes << "/" << total_nodes << " votes ***" << std::endl;
 
@@ -568,6 +570,26 @@ private:
         for (size_t i = 0; i < PeerSnapshot().size(); i++)
             SendAppendEntries(i);
         return true;
+    }
+
+    bool LeaderHasQuorum()
+    {
+        const int total_nodes = (int)PeerSnapshot().size() + 1;
+        const int majority = total_nodes / 2 + 1;
+        int active_nodes = 1;
+        for (const auto &stub : PeerSnapshot())
+        {
+            HeartbeatRequest request;
+            request.set_leader_port(node_id);
+            request.set_leader_term(current_term);
+            HeartbeatResponse response;
+            ClientContext context;
+            context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+            const auto status = stub->Heartbeat(&context, request, &response);
+            if (status.ok() && response.alive())
+                active_nodes++;
+        }
+        return active_nodes >= majority;
     }
 
 public:
@@ -629,13 +651,32 @@ public:
                     {
             while (running) {
                 if (state == NodeState::LEADER) {
+                    int reachable = 1;
                     for (auto& stub : PeerSnapshot()) {
                         HeartbeatRequest req;
                         req.set_leader_port(node_id);
                         req.set_leader_term(current_term);
                         HeartbeatResponse resp;
                         ClientContext ctx;
-                        stub->Heartbeat(&ctx, req, &resp);
+                        ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+                        const auto status = stub->Heartbeat(&ctx, req, &resp);
+                        if (status.ok() && resp.alive()) {
+                            reachable++;
+                        }
+                    }
+                    const int total_nodes = (int)PeerSnapshot().size() + 1;
+                    const int majority = total_nodes / 2 + 1;
+                    if (reachable < majority) {
+                        std::lock_guard<std::mutex> lock(election_mutex);
+                        if (state == NodeState::LEADER) {
+                            state = NodeState::FOLLOWER;
+                            voted_for = -1;
+                            PersistMetadata();
+                            std::lock_guard<std::mutex> hb_lock(heartbeat_mutex);
+                            last_heartbeat = std::chrono::steady_clock::now();
+                            std::cout << "Leader lost quorum at term " << current_term
+                                      << " - stepping down" << std::endl;
+                        }
                     }
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -657,6 +698,7 @@ public:
             }
             current_term = request->leader_term();
             state = NodeState::FOLLOWER;
+            known_leader_id = request->leader_id();
         }
         {
             std::lock_guard<std::mutex> hb_lock(heartbeat_mutex);
@@ -783,6 +825,7 @@ public:
             current_term = request->leader_term();
             state = NodeState::FOLLOWER;
         }
+        known_leader_id = request->leader_port();
         std::lock_guard<std::mutex> hb_lock(heartbeat_mutex);
         last_heartbeat = std::chrono::steady_clock::now();
         response->set_alive(true);
@@ -860,11 +903,12 @@ public:
 
     Status GetClusterStatus(ServerContext *context, const ClusterStatusRequest *request, ClusterStatusResponse *response) override
     {
+        const int leader_id = state == NodeState::LEADER ? node_id : known_leader_id;
         response->set_node_id(node_id);
         response->set_current_term(current_term);
         response->set_commit_index(commit_index);
         response->set_is_leader(state == NodeState::LEADER);
-        response->set_leader_id(state == NodeState::LEADER ? node_id : -1);
+        response->set_leader_id(leader_id);
         return Status::OK;
     }
 
