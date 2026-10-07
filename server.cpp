@@ -855,8 +855,12 @@ public:
                 int timeout_ms = RandomElectionTimeout();
                 std::this_thread::sleep_for(std::chrono::milliseconds(timeout_ms));
                 if (state == NodeState::LEADER) continue;
-                std::lock_guard<std::mutex> lock(heartbeat_mutex);
-                auto elapsed = std::chrono::steady_clock::now() - last_heartbeat;
+                std::chrono::steady_clock::time_point last_seen;
+                {
+                    std::lock_guard<std::mutex> lock(heartbeat_mutex);
+                    last_seen = last_heartbeat;
+                }
+                auto elapsed = std::chrono::steady_clock::now() - last_seen;
                 if (elapsed > std::chrono::milliseconds(timeout_ms)) StartElection();
             } })
             .detach();
