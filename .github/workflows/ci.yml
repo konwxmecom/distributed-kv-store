@@ -59,6 +59,9 @@ jobs:
       - name: Install dependencies
         run: brew install cmake grpc protobuf googletest
 
+      - name: Regenerate protobuf sources
+        run: protoc -I proto --cpp_out=. --grpc_out=. --plugin=protoc-gen-grpc="$(command -v grpc_cpp_plugin)" proto/kvstore.proto
+
       - name: Configure
         run: cmake -S . -B build-macos -DBUILD_BENCHMARKS=OFF
 
