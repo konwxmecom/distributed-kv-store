@@ -208,6 +208,17 @@ class GatewayHttpTests(unittest.TestCase):
         self.assertEqual(status, 403)
         self.assertEqual(self.store, {})
 
+    def test_login_requests_are_rate_limited(self):
+        gateway.GatewayHandler.rate_limit_window_seconds = 60
+        gateway.GatewayHandler.rate_limit_max_requests = 2
+        gateway.GatewayHandler._login_bucket = {}
+        client = self.client()
+        self.assertEqual(self.login(client, "alice", "wrong-password")[0], 401)
+        self.assertEqual(self.login(client, "alice", "wrong-password")[0], 401)
+        status, _, body = self.login(client, "alice", "wrong-password")
+        self.assertEqual(status, 429)
+        self.assertIn("rate limit", json.loads(body)["error"].lower())
+
 
 if __name__ == "__main__":
     unittest.main()

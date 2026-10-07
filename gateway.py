@@ -38,6 +38,8 @@ PASSWORD_ITERATIONS = 310_000
 SESSION_COOKIE = "raft_session"
 SESSION_TTL_SECONDS = 8 * 60 * 60
 MAX_REQUEST_BYTES = 10 * 1024 * 1024
+RATE_LIMIT_WINDOW_SECONDS = 60
+RATE_LIMIT_MAX_REQUESTS = 5
 
 
 def create_password_record(password):
@@ -138,6 +140,31 @@ class GatewayHandler(BaseHTTPRequestHandler):
     allowed_origins = set()
     users = {}
     session_secret = b""
+    rate_limit_window_seconds = RATE_LIMIT_WINDOW_SECONDS
+    rate_limit_max_requests = RATE_LIMIT_MAX_REQUESTS
+    _login_bucket = {}
+
+    def _rate_limit_key(self):
+        forwarded = self.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        return self.client_address[0]
+
+    def _enforce_login_rate_limit(self):
+        key = self._rate_limit_key()
+        now = int(time.time())
+        bucket = self.__class__._login_bucket.setdefault(key, [])
+        bucket[:] = [ts for ts in bucket if now - ts < self.__class__.rate_limit_window_seconds]
+        if len(bucket) >= self.__class__.rate_limit_max_requests:
+            self._record_metric("auth_failure", 429)
+            retry_after = max(1, self.__class__.rate_limit_window_seconds - (now - bucket[0]))
+            self._send(429, {
+                "error": "rate limit exceeded; please wait before retrying authentication",
+                "retry_after_seconds": retry_after,
+            }, (("Retry-After", str(retry_after)),))
+            return True
+        bucket.append(now)
+        return False
 
     def _current_user(self):
         if not self.users:
@@ -367,6 +394,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
         if path == "/api/login":
             if not self.users:
                 self._send(400, {"error": "authentication is not configured"})
+                return
+            if self._enforce_login_rate_limit():
                 return
             try:
                 form = parse_qs(self._read_body().decode("utf-8"), keep_blank_values=True)
