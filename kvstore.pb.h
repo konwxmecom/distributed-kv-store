@@ -397,6 +397,7 @@ class GetResponse final :
   enum : int {
     kValueFieldNumber = 1,
     kFoundFieldNumber = 2,
+    kLeaderIdFieldNumber = 3,
   };
   // string value = 1;
   void clear_value();
@@ -421,6 +422,15 @@ class GetResponse final :
   void _internal_set_found(bool value);
   public:
 
+  // int32 leader_id = 3;
+  void clear_leader_id();
+  int32_t leader_id() const;
+  void set_leader_id(int32_t value);
+  private:
+  int32_t _internal_leader_id() const;
+  void _internal_set_leader_id(int32_t value);
+  public:
+
   // @@protoc_insertion_point(class_scope:kvstore.GetResponse)
  private:
   class _Internal;
@@ -431,6 +441,7 @@ class GetResponse final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr value_;
     bool found_;
+    int32_t leader_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -729,6 +740,7 @@ class SetResponse final :
 
   enum : int {
     kSuccessFieldNumber = 1,
+    kLeaderIdFieldNumber = 2,
   };
   // bool success = 1;
   void clear_success();
@@ -737,6 +749,15 @@ class SetResponse final :
   private:
   bool _internal_success() const;
   void _internal_set_success(bool value);
+  public:
+
+  // int32 leader_id = 2;
+  void clear_leader_id();
+  int32_t leader_id() const;
+  void set_leader_id(int32_t value);
+  private:
+  int32_t _internal_leader_id() const;
+  void _internal_set_leader_id(int32_t value);
   public:
 
   // @@protoc_insertion_point(class_scope:kvstore.SetResponse)
@@ -748,6 +769,7 @@ class SetResponse final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     bool success_;
+    int32_t leader_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -1030,6 +1052,7 @@ class DeleteResponse final :
 
   enum : int {
     kSuccessFieldNumber = 1,
+    kLeaderIdFieldNumber = 2,
   };
   // bool success = 1;
   void clear_success();
@@ -1038,6 +1061,15 @@ class DeleteResponse final :
   private:
   bool _internal_success() const;
   void _internal_set_success(bool value);
+  public:
+
+  // int32 leader_id = 2;
+  void clear_leader_id();
+  int32_t leader_id() const;
+  void set_leader_id(int32_t value);
+  private:
+  int32_t _internal_leader_id() const;
+  void _internal_set_leader_id(int32_t value);
   public:
 
   // @@protoc_insertion_point(class_scope:kvstore.DeleteResponse)
@@ -1049,6 +1081,7 @@ class DeleteResponse final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     bool success_;
+    int32_t leader_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -2876,7 +2909,7 @@ inline const std::string& GetRequest::key() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void GetRequest::set_key(ArgT0&& arg0, ArgT... args) {
-
+ 
  _impl_.key_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:kvstore.GetRequest.key)
 }
@@ -2889,11 +2922,11 @@ inline const std::string& GetRequest::_internal_key() const {
   return _impl_.key_.Get();
 }
 inline void GetRequest::_internal_set_key(const std::string& value) {
-
+  
   _impl_.key_.Set(value, GetArenaForAllocation());
 }
 inline std::string* GetRequest::_internal_mutable_key() {
-
+  
   return _impl_.key_.Mutable(GetArenaForAllocation());
 }
 inline std::string* GetRequest::release_key() {
@@ -2902,9 +2935,9 @@ inline std::string* GetRequest::release_key() {
 }
 inline void GetRequest::set_allocated_key(std::string* key) {
   if (key != nullptr) {
-
+    
   } else {
-
+    
   }
   _impl_.key_.SetAllocated(key, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -2930,7 +2963,7 @@ inline const std::string& GetResponse::value() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void GetResponse::set_value(ArgT0&& arg0, ArgT... args) {
-
+ 
  _impl_.value_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:kvstore.GetResponse.value)
 }
@@ -2943,11 +2976,11 @@ inline const std::string& GetResponse::_internal_value() const {
   return _impl_.value_.Get();
 }
 inline void GetResponse::_internal_set_value(const std::string& value) {
-
+  
   _impl_.value_.Set(value, GetArenaForAllocation());
 }
 inline std::string* GetResponse::_internal_mutable_value() {
-
+  
   return _impl_.value_.Mutable(GetArenaForAllocation());
 }
 inline std::string* GetResponse::release_value() {
@@ -2956,9 +2989,9 @@ inline std::string* GetResponse::release_value() {
 }
 inline void GetResponse::set_allocated_value(std::string* value) {
   if (value != nullptr) {
-
+    
   } else {
-
+    
   }
   _impl_.value_.SetAllocated(value, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -2981,12 +3014,32 @@ inline bool GetResponse::found() const {
   return _internal_found();
 }
 inline void GetResponse::_internal_set_found(bool value) {
-
+  
   _impl_.found_ = value;
 }
 inline void GetResponse::set_found(bool value) {
   _internal_set_found(value);
   // @@protoc_insertion_point(field_set:kvstore.GetResponse.found)
+}
+
+// int32 leader_id = 3;
+inline void GetResponse::clear_leader_id() {
+  _impl_.leader_id_ = 0;
+}
+inline int32_t GetResponse::_internal_leader_id() const {
+  return _impl_.leader_id_;
+}
+inline int32_t GetResponse::leader_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.GetResponse.leader_id)
+  return _internal_leader_id();
+}
+inline void GetResponse::_internal_set_leader_id(int32_t value) {
+  
+  _impl_.leader_id_ = value;
+}
+inline void GetResponse::set_leader_id(int32_t value) {
+  _internal_set_leader_id(value);
+  // @@protoc_insertion_point(field_set:kvstore.GetResponse.leader_id)
 }
 
 // -------------------------------------------------------------------
@@ -3004,7 +3057,7 @@ inline const std::string& SetRequest::key() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void SetRequest::set_key(ArgT0&& arg0, ArgT... args) {
-
+ 
  _impl_.key_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:kvstore.SetRequest.key)
 }
@@ -3017,11 +3070,11 @@ inline const std::string& SetRequest::_internal_key() const {
   return _impl_.key_.Get();
 }
 inline void SetRequest::_internal_set_key(const std::string& value) {
-
+  
   _impl_.key_.Set(value, GetArenaForAllocation());
 }
 inline std::string* SetRequest::_internal_mutable_key() {
-
+  
   return _impl_.key_.Mutable(GetArenaForAllocation());
 }
 inline std::string* SetRequest::release_key() {
@@ -3030,9 +3083,9 @@ inline std::string* SetRequest::release_key() {
 }
 inline void SetRequest::set_allocated_key(std::string* key) {
   if (key != nullptr) {
-
+    
   } else {
-
+    
   }
   _impl_.key_.SetAllocated(key, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3054,7 +3107,7 @@ inline const std::string& SetRequest::value() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void SetRequest::set_value(ArgT0&& arg0, ArgT... args) {
-
+ 
  _impl_.value_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:kvstore.SetRequest.value)
 }
@@ -3067,11 +3120,11 @@ inline const std::string& SetRequest::_internal_value() const {
   return _impl_.value_.Get();
 }
 inline void SetRequest::_internal_set_value(const std::string& value) {
-
+  
   _impl_.value_.Set(value, GetArenaForAllocation());
 }
 inline std::string* SetRequest::_internal_mutable_value() {
-
+  
   return _impl_.value_.Mutable(GetArenaForAllocation());
 }
 inline std::string* SetRequest::release_value() {
@@ -3080,9 +3133,9 @@ inline std::string* SetRequest::release_value() {
 }
 inline void SetRequest::set_allocated_value(std::string* value) {
   if (value != nullptr) {
-
+    
   } else {
-
+    
   }
   _impl_.value_.SetAllocated(value, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3109,12 +3162,32 @@ inline bool SetResponse::success() const {
   return _internal_success();
 }
 inline void SetResponse::_internal_set_success(bool value) {
-
+  
   _impl_.success_ = value;
 }
 inline void SetResponse::set_success(bool value) {
   _internal_set_success(value);
   // @@protoc_insertion_point(field_set:kvstore.SetResponse.success)
+}
+
+// int32 leader_id = 2;
+inline void SetResponse::clear_leader_id() {
+  _impl_.leader_id_ = 0;
+}
+inline int32_t SetResponse::_internal_leader_id() const {
+  return _impl_.leader_id_;
+}
+inline int32_t SetResponse::leader_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.SetResponse.leader_id)
+  return _internal_leader_id();
+}
+inline void SetResponse::_internal_set_leader_id(int32_t value) {
+  
+  _impl_.leader_id_ = value;
+}
+inline void SetResponse::set_leader_id(int32_t value) {
+  _internal_set_leader_id(value);
+  // @@protoc_insertion_point(field_set:kvstore.SetResponse.leader_id)
 }
 
 // -------------------------------------------------------------------
@@ -3132,7 +3205,7 @@ inline const std::string& DeleteRequest::key() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void DeleteRequest::set_key(ArgT0&& arg0, ArgT... args) {
-
+ 
  _impl_.key_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:kvstore.DeleteRequest.key)
 }
@@ -3145,11 +3218,11 @@ inline const std::string& DeleteRequest::_internal_key() const {
   return _impl_.key_.Get();
 }
 inline void DeleteRequest::_internal_set_key(const std::string& value) {
-
+  
   _impl_.key_.Set(value, GetArenaForAllocation());
 }
 inline std::string* DeleteRequest::_internal_mutable_key() {
-
+  
   return _impl_.key_.Mutable(GetArenaForAllocation());
 }
 inline std::string* DeleteRequest::release_key() {
@@ -3158,9 +3231,9 @@ inline std::string* DeleteRequest::release_key() {
 }
 inline void DeleteRequest::set_allocated_key(std::string* key) {
   if (key != nullptr) {
-
+    
   } else {
-
+    
   }
   _impl_.key_.SetAllocated(key, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3187,12 +3260,32 @@ inline bool DeleteResponse::success() const {
   return _internal_success();
 }
 inline void DeleteResponse::_internal_set_success(bool value) {
-
+  
   _impl_.success_ = value;
 }
 inline void DeleteResponse::set_success(bool value) {
   _internal_set_success(value);
   // @@protoc_insertion_point(field_set:kvstore.DeleteResponse.success)
+}
+
+// int32 leader_id = 2;
+inline void DeleteResponse::clear_leader_id() {
+  _impl_.leader_id_ = 0;
+}
+inline int32_t DeleteResponse::_internal_leader_id() const {
+  return _impl_.leader_id_;
+}
+inline int32_t DeleteResponse::leader_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.DeleteResponse.leader_id)
+  return _internal_leader_id();
+}
+inline void DeleteResponse::_internal_set_leader_id(int32_t value) {
+  
+  _impl_.leader_id_ = value;
+}
+inline void DeleteResponse::set_leader_id(int32_t value) {
+  _internal_set_leader_id(value);
+  // @@protoc_insertion_point(field_set:kvstore.DeleteResponse.leader_id)
 }
 
 // -------------------------------------------------------------------
@@ -3298,7 +3391,7 @@ inline int32_t ClusterStatusResponse::node_id() const {
   return _internal_node_id();
 }
 inline void ClusterStatusResponse::_internal_set_node_id(int32_t value) {
-
+  
   _impl_.node_id_ = value;
 }
 inline void ClusterStatusResponse::set_node_id(int32_t value) {
@@ -3318,7 +3411,7 @@ inline int32_t ClusterStatusResponse::leader_id() const {
   return _internal_leader_id();
 }
 inline void ClusterStatusResponse::_internal_set_leader_id(int32_t value) {
-
+  
   _impl_.leader_id_ = value;
 }
 inline void ClusterStatusResponse::set_leader_id(int32_t value) {
@@ -3338,7 +3431,7 @@ inline int32_t ClusterStatusResponse::current_term() const {
   return _internal_current_term();
 }
 inline void ClusterStatusResponse::_internal_set_current_term(int32_t value) {
-
+  
   _impl_.current_term_ = value;
 }
 inline void ClusterStatusResponse::set_current_term(int32_t value) {
@@ -3358,7 +3451,7 @@ inline int32_t ClusterStatusResponse::commit_index() const {
   return _internal_commit_index();
 }
 inline void ClusterStatusResponse::_internal_set_commit_index(int32_t value) {
-
+  
   _impl_.commit_index_ = value;
 }
 inline void ClusterStatusResponse::set_commit_index(int32_t value) {
@@ -3378,7 +3471,7 @@ inline bool ClusterStatusResponse::is_leader() const {
   return _internal_is_leader();
 }
 inline void ClusterStatusResponse::_internal_set_is_leader(bool value) {
-
+  
   _impl_.is_leader_ = value;
 }
 inline void ClusterStatusResponse::set_is_leader(bool value) {
@@ -3402,7 +3495,7 @@ inline int32_t HeartbeatRequest::leader_port() const {
   return _internal_leader_port();
 }
 inline void HeartbeatRequest::_internal_set_leader_port(int32_t value) {
-
+  
   _impl_.leader_port_ = value;
 }
 inline void HeartbeatRequest::set_leader_port(int32_t value) {
@@ -3422,7 +3515,7 @@ inline int32_t HeartbeatRequest::leader_term() const {
   return _internal_leader_term();
 }
 inline void HeartbeatRequest::_internal_set_leader_term(int32_t value) {
-
+  
   _impl_.leader_term_ = value;
 }
 inline void HeartbeatRequest::set_leader_term(int32_t value) {
@@ -3446,7 +3539,7 @@ inline bool HeartbeatResponse::alive() const {
   return _internal_alive();
 }
 inline void HeartbeatResponse::_internal_set_alive(bool value) {
-
+  
   _impl_.alive_ = value;
 }
 inline void HeartbeatResponse::set_alive(bool value) {
@@ -3470,7 +3563,7 @@ inline int32_t VoteRequest::candidate_term() const {
   return _internal_candidate_term();
 }
 inline void VoteRequest::_internal_set_candidate_term(int32_t value) {
-
+  
   _impl_.candidate_term_ = value;
 }
 inline void VoteRequest::set_candidate_term(int32_t value) {
@@ -3490,7 +3583,7 @@ inline int32_t VoteRequest::candidate_id() const {
   return _internal_candidate_id();
 }
 inline void VoteRequest::_internal_set_candidate_id(int32_t value) {
-
+  
   _impl_.candidate_id_ = value;
 }
 inline void VoteRequest::set_candidate_id(int32_t value) {
@@ -3510,7 +3603,7 @@ inline int32_t VoteRequest::candidate_last_log_index() const {
   return _internal_candidate_last_log_index();
 }
 inline void VoteRequest::_internal_set_candidate_last_log_index(int32_t value) {
-
+  
   _impl_.candidate_last_log_index_ = value;
 }
 inline void VoteRequest::set_candidate_last_log_index(int32_t value) {
@@ -3530,7 +3623,7 @@ inline int32_t VoteRequest::candidate_last_log_term() const {
   return _internal_candidate_last_log_term();
 }
 inline void VoteRequest::_internal_set_candidate_last_log_term(int32_t value) {
-
+  
   _impl_.candidate_last_log_term_ = value;
 }
 inline void VoteRequest::set_candidate_last_log_term(int32_t value) {
@@ -3554,7 +3647,7 @@ inline bool VoteResponse::vote_granted() const {
   return _internal_vote_granted();
 }
 inline void VoteResponse::_internal_set_vote_granted(bool value) {
-
+  
   _impl_.vote_granted_ = value;
 }
 inline void VoteResponse::set_vote_granted(bool value) {
@@ -3574,7 +3667,7 @@ inline int32_t VoteResponse::voter_term() const {
   return _internal_voter_term();
 }
 inline void VoteResponse::_internal_set_voter_term(int32_t value) {
-
+  
   _impl_.voter_term_ = value;
 }
 inline void VoteResponse::set_voter_term(int32_t value) {
@@ -3598,7 +3691,7 @@ inline int32_t LogEntry::term() const {
   return _internal_term();
 }
 inline void LogEntry::_internal_set_term(int32_t value) {
-
+  
   _impl_.term_ = value;
 }
 inline void LogEntry::set_term(int32_t value) {
@@ -3617,7 +3710,7 @@ inline const std::string& LogEntry::key() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void LogEntry::set_key(ArgT0&& arg0, ArgT... args) {
-
+ 
  _impl_.key_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:kvstore.LogEntry.key)
 }
@@ -3630,11 +3723,11 @@ inline const std::string& LogEntry::_internal_key() const {
   return _impl_.key_.Get();
 }
 inline void LogEntry::_internal_set_key(const std::string& value) {
-
+  
   _impl_.key_.Set(value, GetArenaForAllocation());
 }
 inline std::string* LogEntry::_internal_mutable_key() {
-
+  
   return _impl_.key_.Mutable(GetArenaForAllocation());
 }
 inline std::string* LogEntry::release_key() {
@@ -3643,9 +3736,9 @@ inline std::string* LogEntry::release_key() {
 }
 inline void LogEntry::set_allocated_key(std::string* key) {
   if (key != nullptr) {
-
+    
   } else {
-
+    
   }
   _impl_.key_.SetAllocated(key, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3667,7 +3760,7 @@ inline const std::string& LogEntry::value() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void LogEntry::set_value(ArgT0&& arg0, ArgT... args) {
-
+ 
  _impl_.value_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:kvstore.LogEntry.value)
 }
@@ -3680,11 +3773,11 @@ inline const std::string& LogEntry::_internal_value() const {
   return _impl_.value_.Get();
 }
 inline void LogEntry::_internal_set_value(const std::string& value) {
-
+  
   _impl_.value_.Set(value, GetArenaForAllocation());
 }
 inline std::string* LogEntry::_internal_mutable_value() {
-
+  
   return _impl_.value_.Mutable(GetArenaForAllocation());
 }
 inline std::string* LogEntry::release_value() {
@@ -3693,9 +3786,9 @@ inline std::string* LogEntry::release_value() {
 }
 inline void LogEntry::set_allocated_value(std::string* value) {
   if (value != nullptr) {
-
+    
   } else {
-
+    
   }
   _impl_.value_.SetAllocated(value, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3722,7 +3815,7 @@ inline int32_t AppendEntriesRequest::leader_term() const {
   return _internal_leader_term();
 }
 inline void AppendEntriesRequest::_internal_set_leader_term(int32_t value) {
-
+  
   _impl_.leader_term_ = value;
 }
 inline void AppendEntriesRequest::set_leader_term(int32_t value) {
@@ -3742,7 +3835,7 @@ inline int32_t AppendEntriesRequest::leader_id() const {
   return _internal_leader_id();
 }
 inline void AppendEntriesRequest::_internal_set_leader_id(int32_t value) {
-
+  
   _impl_.leader_id_ = value;
 }
 inline void AppendEntriesRequest::set_leader_id(int32_t value) {
@@ -3762,7 +3855,7 @@ inline int32_t AppendEntriesRequest::prev_log_index() const {
   return _internal_prev_log_index();
 }
 inline void AppendEntriesRequest::_internal_set_prev_log_index(int32_t value) {
-
+  
   _impl_.prev_log_index_ = value;
 }
 inline void AppendEntriesRequest::set_prev_log_index(int32_t value) {
@@ -3782,7 +3875,7 @@ inline int32_t AppendEntriesRequest::prev_log_term() const {
   return _internal_prev_log_term();
 }
 inline void AppendEntriesRequest::_internal_set_prev_log_term(int32_t value) {
-
+  
   _impl_.prev_log_term_ = value;
 }
 inline void AppendEntriesRequest::set_prev_log_term(int32_t value) {
@@ -3842,7 +3935,7 @@ inline int32_t AppendEntriesRequest::leader_commit() const {
   return _internal_leader_commit();
 }
 inline void AppendEntriesRequest::_internal_set_leader_commit(int32_t value) {
-
+  
   _impl_.leader_commit_ = value;
 }
 inline void AppendEntriesRequest::set_leader_commit(int32_t value) {
@@ -3866,7 +3959,7 @@ inline int32_t AppendEntriesResponse::term() const {
   return _internal_term();
 }
 inline void AppendEntriesResponse::_internal_set_term(int32_t value) {
-
+  
   _impl_.term_ = value;
 }
 inline void AppendEntriesResponse::set_term(int32_t value) {
@@ -3886,7 +3979,7 @@ inline bool AppendEntriesResponse::success() const {
   return _internal_success();
 }
 inline void AppendEntriesResponse::_internal_set_success(bool value) {
-
+  
   _impl_.success_ = value;
 }
 inline void AppendEntriesResponse::set_success(bool value) {
@@ -3906,7 +3999,7 @@ inline int32_t AppendEntriesResponse::match_index() const {
   return _internal_match_index();
 }
 inline void AppendEntriesResponse::_internal_set_match_index(int32_t value) {
-
+  
   _impl_.match_index_ = value;
 }
 inline void AppendEntriesResponse::set_match_index(int32_t value) {

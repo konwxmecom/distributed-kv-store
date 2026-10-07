@@ -377,6 +377,58 @@ TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
     waitpid(third_pid, nullptr, 0);
 }
 
+TEST(RaftIntegration, FollowerRepliesIncludeLeaderHint) {
+    const std::vector<std::string> ports = {"18066", "18067", "18068"};
+    for (const auto& port : ports) {
+        std::error_code error;
+        std::filesystem::remove_all(std::filesystem::path("data") / ("node_" + port), error);
+    }
+
+    TestCluster cluster(ports);
+    for (const auto& port : ports) {
+        ASSERT_TRUE(WaitForServer("localhost:" + port));
+    }
+    ASSERT_TRUE(WaitForLeader("localhost:" + ports.front()));
+
+    std::string leader_port;
+    std::string follower_port;
+    for (const auto& port : ports) {
+        auto channel = grpc::CreateChannel("localhost:" + port, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::ClusterStatusRequest request;
+        kvstore::ClusterStatusResponse response;
+        grpc::ClientContext context;
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+        ASSERT_TRUE(stub.GetClusterStatus(&context, request, &response).ok());
+        if (response.is_leader()) {
+            leader_port = port;
+        } else if (follower_port.empty()) {
+            follower_port = port;
+        }
+    }
+    ASSERT_FALSE(leader_port.empty());
+    ASSERT_FALSE(follower_port.empty());
+
+    auto follower_channel = grpc::CreateChannel("localhost:" + follower_port, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub follower_stub(follower_channel);
+
+    kvstore::GetRequest get_request;
+    get_request.set_key("leader-hint-read");
+    kvstore::GetResponse get_response;
+    grpc::ClientContext get_context;
+    ASSERT_TRUE(follower_stub.Get(&get_context, get_request, &get_response).ok());
+    EXPECT_EQ(get_response.leader_id(), std::stoi(leader_port));
+
+    kvstore::SetRequest set_request;
+    set_request.set_key("leader-hint-write");
+    set_request.set_value("value");
+    kvstore::SetResponse set_response;
+    grpc::ClientContext set_context;
+    ASSERT_TRUE(follower_stub.Set(&set_context, set_request, &set_response).ok());
+    EXPECT_TRUE(set_response.success());
+    EXPECT_EQ(set_response.leader_id(), std::stoi(leader_port));
+}
+
 TEST(RaftIntegration, RejectsVoteFromCandidateWithStaleLog) {
     const std::vector<std::string> ports = {"18060", "18061", "18062"};
     for (const auto& port : ports) {

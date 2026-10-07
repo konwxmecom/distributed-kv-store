@@ -31,6 +31,7 @@ message GetRequest {
 message GetResponse {
     string value = 1;
     bool found = 2;
+    int32 leader_id = 3;
 }
 
 message SetRequest {
@@ -40,6 +41,7 @@ message SetRequest {
 
 message SetResponse {
     bool success = 1;
+    int32 leader_id = 2;
 }
 
 message DeleteRequest {
@@ -48,6 +50,7 @@ message DeleteRequest {
 
 message DeleteResponse {
     bool success = 1;
+    int32 leader_id = 2;
 }
 
 message ListKeysRequest {}

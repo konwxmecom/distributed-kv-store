@@ -850,6 +850,10 @@ public:
                     return Status::OK;
                 }
             }
+            response->set_value("");
+            response->set_found(false);
+            response->set_leader_id(known_leader_id);
+            return Status::OK;
         }
 
         std::lock_guard<std::mutex> lock(store_mutex);
@@ -863,6 +867,7 @@ public:
         {
             response->set_found(false);
         }
+        response->set_leader_id(node_id);
         return Status::OK;
     }
 
@@ -929,6 +934,7 @@ public:
                     if (!forwarded_response.success())
                         std::cerr << "Leader rejected forwarded write from node " << node_id << std::endl;
                     response->set_success(forwarded_response.success());
+                    response->set_leader_id(forwarded_response.leader_id());
                     return Status::OK;
                 }
                 std::cerr << "Forwarded write from node " << node_id << " failed: "
@@ -937,6 +943,7 @@ public:
             else
                 std::cerr << "No leader found while forwarding write from node " << node_id << std::endl;
             response->set_success(false);
+            response->set_leader_id(known_leader_id);
             return Status::OK;
         }
 
@@ -945,6 +952,7 @@ public:
         entry.set_key(request->key());
         entry.set_value(request->value());
         response->set_success(CommitEntry(entry));
+        response->set_leader_id(node_id);
         return Status::OK;
     }
 
@@ -963,10 +971,12 @@ public:
                 if (status.ok())
                 {
                     response->set_success(forwarded_response.success());
+                    response->set_leader_id(forwarded_response.leader_id());
                     return Status::OK;
                 }
             }
             response->set_success(false);
+            response->set_leader_id(known_leader_id);
             return Status::OK;
         }
 
@@ -975,6 +985,7 @@ public:
         entry.set_key(request->key());
         entry.set_value(kDeleteMarker);
         response->set_success(CommitEntry(entry));
+        response->set_leader_id(node_id);
         return Status::OK;
     }
 };

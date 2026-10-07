@@ -38,6 +38,7 @@ PROTOBUF_CONSTEXPR GetResponse::GetResponse(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.value_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.found_)*/false
+  , /*decltype(_impl_.leader_id_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct GetResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR GetResponseDefaultTypeInternal()
@@ -65,6 +66,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 PROTOBUF_CONSTEXPR SetResponse::SetResponse(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.success_)*/false
+  , /*decltype(_impl_.leader_id_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct SetResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR SetResponseDefaultTypeInternal()
@@ -91,6 +93,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 PROTOBUF_CONSTEXPR DeleteResponse::DeleteResponse(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.success_)*/false
+  , /*decltype(_impl_.leader_id_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct DeleteResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR DeleteResponseDefaultTypeInternal()
@@ -279,6 +282,7 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::kvstore::GetResponse, _impl_.value_),
   PROTOBUF_FIELD_OFFSET(::kvstore::GetResponse, _impl_.found_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::GetResponse, _impl_.leader_id_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::kvstore::SetRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -294,6 +298,7 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::kvstore::SetResponse, _impl_.success_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::SetResponse, _impl_.leader_id_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::kvstore::DeleteRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -308,6 +313,7 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::kvstore::DeleteResponse, _impl_.success_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::DeleteResponse, _impl_.leader_id_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::kvstore::ListKeysRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -405,21 +411,21 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::kvstore::GetRequest)},
   { 7, -1, -1, sizeof(::kvstore::GetResponse)},
-  { 15, -1, -1, sizeof(::kvstore::SetRequest)},
-  { 23, -1, -1, sizeof(::kvstore::SetResponse)},
-  { 30, -1, -1, sizeof(::kvstore::DeleteRequest)},
-  { 37, -1, -1, sizeof(::kvstore::DeleteResponse)},
-  { 44, -1, -1, sizeof(::kvstore::ListKeysRequest)},
-  { 50, -1, -1, sizeof(::kvstore::ListKeysResponse)},
-  { 57, -1, -1, sizeof(::kvstore::ClusterStatusRequest)},
-  { 63, -1, -1, sizeof(::kvstore::ClusterStatusResponse)},
-  { 74, -1, -1, sizeof(::kvstore::HeartbeatRequest)},
-  { 82, -1, -1, sizeof(::kvstore::HeartbeatResponse)},
-  { 89, -1, -1, sizeof(::kvstore::VoteRequest)},
-  { 99, -1, -1, sizeof(::kvstore::VoteResponse)},
-  { 107, -1, -1, sizeof(::kvstore::LogEntry)},
-  { 116, -1, -1, sizeof(::kvstore::AppendEntriesRequest)},
-  { 128, -1, -1, sizeof(::kvstore::AppendEntriesResponse)},
+  { 16, -1, -1, sizeof(::kvstore::SetRequest)},
+  { 24, -1, -1, sizeof(::kvstore::SetResponse)},
+  { 32, -1, -1, sizeof(::kvstore::DeleteRequest)},
+  { 39, -1, -1, sizeof(::kvstore::DeleteResponse)},
+  { 47, -1, -1, sizeof(::kvstore::ListKeysRequest)},
+  { 53, -1, -1, sizeof(::kvstore::ListKeysResponse)},
+  { 60, -1, -1, sizeof(::kvstore::ClusterStatusRequest)},
+  { 66, -1, -1, sizeof(::kvstore::ClusterStatusResponse)},
+  { 77, -1, -1, sizeof(::kvstore::HeartbeatRequest)},
+  { 85, -1, -1, sizeof(::kvstore::HeartbeatResponse)},
+  { 92, -1, -1, sizeof(::kvstore::VoteRequest)},
+  { 102, -1, -1, sizeof(::kvstore::VoteResponse)},
+  { 110, -1, -1, sizeof(::kvstore::LogEntry)},
+  { 119, -1, -1, sizeof(::kvstore::AppendEntriesRequest)},
+  { 131, -1, -1, sizeof(::kvstore::AppendEntriesResponse)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -444,50 +450,51 @@ static const ::_pb::Message* const file_default_instances[] = {
 
 const char descriptor_table_protodef_kvstore_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\rkvstore.proto\022\007kvstore\"\031\n\nGetRequest\022\013"
-  "\n\003key\030\001 \001(\t\"+\n\013GetResponse\022\r\n\005value\030\001 \001("
-  "\t\022\r\n\005found\030\002 \001(\010\"(\n\nSetRequest\022\013\n\003key\030\001 "
-  "\001(\t\022\r\n\005value\030\002 \001(\t\"\036\n\013SetResponse\022\017\n\007suc"
-  "cess\030\001 \001(\010\"\034\n\rDeleteRequest\022\013\n\003key\030\001 \001(\t"
-  "\"!\n\016DeleteResponse\022\017\n\007success\030\001 \001(\010\"\021\n\017L"
-  "istKeysRequest\" \n\020ListKeysResponse\022\014\n\004ke"
-  "ys\030\001 \003(\t\"\026\n\024ClusterStatusRequest\"z\n\025Clus"
-  "terStatusResponse\022\017\n\007node_id\030\001 \001(\005\022\021\n\tle"
-  "ader_id\030\002 \001(\005\022\024\n\014current_term\030\003 \001(\005\022\024\n\014c"
-  "ommit_index\030\004 \001(\005\022\021\n\tis_leader\030\005 \001(\010\"<\n\020"
-  "HeartbeatRequest\022\023\n\013leader_port\030\001 \001(\005\022\023\n"
-  "\013leader_term\030\002 \001(\005\"\"\n\021HeartbeatResponse\022"
-  "\r\n\005alive\030\001 \001(\010\"~\n\013VoteRequest\022\026\n\016candida"
-  "te_term\030\001 \001(\005\022\024\n\014candidate_id\030\002 \001(\005\022 \n\030c"
-  "andidate_last_log_index\030\003 \001(\005\022\037\n\027candida"
-  "te_last_log_term\030\004 \001(\005\"8\n\014VoteResponse\022\024"
-  "\n\014vote_granted\030\001 \001(\010\022\022\n\nvoter_term\030\002 \001(\005"
-  "\"4\n\010LogEntry\022\014\n\004term\030\001 \001(\005\022\013\n\003key\030\002 \001(\t\022"
-  "\r\n\005value\030\003 \001(\t\"\250\001\n\024AppendEntriesRequest\022"
-  "\023\n\013leader_term\030\001 \001(\005\022\021\n\tleader_id\030\002 \001(\005\022"
-  "\026\n\016prev_log_index\030\003 \001(\005\022\025\n\rprev_log_term"
-  "\030\004 \001(\005\022\"\n\007entries\030\005 \003(\0132\021.kvstore.LogEnt"
-  "ry\022\025\n\rleader_commit\030\006 \001(\005\"K\n\025AppendEntri"
-  "esResponse\022\014\n\004term\030\001 \001(\005\022\017\n\007success\030\002 \001("
-  "\010\022\023\n\013match_index\030\003 \001(\0052\304\004\n\007KVStore\0220\n\003Ge"
-  "t\022\023.kvstore.GetRequest\032\024.kvstore.GetResp"
-  "onse\0220\n\003Set\022\023.kvstore.SetRequest\032\024.kvsto"
-  "re.SetResponse\0229\n\006Delete\022\026.kvstore.Delet"
-  "eRequest\032\027.kvstore.DeleteResponse\022\?\n\010Lis"
-  "tKeys\022\030.kvstore.ListKeysRequest\032\031.kvstor"
-  "e.ListKeysResponse\022Q\n\020GetClusterStatus\022\035"
-  ".kvstore.ClusterStatusRequest\032\036.kvstore."
-  "ClusterStatusResponse\0226\n\tReplicate\022\023.kvs"
-  "tore.SetRequest\032\024.kvstore.SetResponse\022B\n"
-  "\tHeartbeat\022\031.kvstore.HeartbeatRequest\032\032."
-  "kvstore.HeartbeatResponse\022:\n\013RequestVote"
-  "\022\024.kvstore.VoteRequest\032\025.kvstore.VoteRes"
-  "ponse\022N\n\rAppendEntries\022\035.kvstore.AppendE"
-  "ntriesRequest\032\036.kvstore.AppendEntriesRes"
-  "ponseb\006proto3"
+  "\n\003key\030\001 \001(\t\">\n\013GetResponse\022\r\n\005value\030\001 \001("
+  "\t\022\r\n\005found\030\002 \001(\010\022\021\n\tleader_id\030\003 \001(\005\"(\n\nS"
+  "etRequest\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\"1\n"
+  "\013SetResponse\022\017\n\007success\030\001 \001(\010\022\021\n\tleader_"
+  "id\030\002 \001(\005\"\034\n\rDeleteRequest\022\013\n\003key\030\001 \001(\t\"4"
+  "\n\016DeleteResponse\022\017\n\007success\030\001 \001(\010\022\021\n\tlea"
+  "der_id\030\002 \001(\005\"\021\n\017ListKeysRequest\" \n\020ListK"
+  "eysResponse\022\014\n\004keys\030\001 \003(\t\"\026\n\024ClusterStat"
+  "usRequest\"z\n\025ClusterStatusResponse\022\017\n\007no"
+  "de_id\030\001 \001(\005\022\021\n\tleader_id\030\002 \001(\005\022\024\n\014curren"
+  "t_term\030\003 \001(\005\022\024\n\014commit_index\030\004 \001(\005\022\021\n\tis"
+  "_leader\030\005 \001(\010\"<\n\020HeartbeatRequest\022\023\n\013lea"
+  "der_port\030\001 \001(\005\022\023\n\013leader_term\030\002 \001(\005\"\"\n\021H"
+  "eartbeatResponse\022\r\n\005alive\030\001 \001(\010\"~\n\013VoteR"
+  "equest\022\026\n\016candidate_term\030\001 \001(\005\022\024\n\014candid"
+  "ate_id\030\002 \001(\005\022 \n\030candidate_last_log_index"
+  "\030\003 \001(\005\022\037\n\027candidate_last_log_term\030\004 \001(\005\""
+  "8\n\014VoteResponse\022\024\n\014vote_granted\030\001 \001(\010\022\022\n"
+  "\nvoter_term\030\002 \001(\005\"4\n\010LogEntry\022\014\n\004term\030\001 "
+  "\001(\005\022\013\n\003key\030\002 \001(\t\022\r\n\005value\030\003 \001(\t\"\250\001\n\024Appe"
+  "ndEntriesRequest\022\023\n\013leader_term\030\001 \001(\005\022\021\n"
+  "\tleader_id\030\002 \001(\005\022\026\n\016prev_log_index\030\003 \001(\005"
+  "\022\025\n\rprev_log_term\030\004 \001(\005\022\"\n\007entries\030\005 \003(\013"
+  "2\021.kvstore.LogEntry\022\025\n\rleader_commit\030\006 \001"
+  "(\005\"K\n\025AppendEntriesResponse\022\014\n\004term\030\001 \001("
+  "\005\022\017\n\007success\030\002 \001(\010\022\023\n\013match_index\030\003 \001(\0052"
+  "\304\004\n\007KVStore\0220\n\003Get\022\023.kvstore.GetRequest\032"
+  "\024.kvstore.GetResponse\0220\n\003Set\022\023.kvstore.S"
+  "etRequest\032\024.kvstore.SetResponse\0229\n\006Delet"
+  "e\022\026.kvstore.DeleteRequest\032\027.kvstore.Dele"
+  "teResponse\022\?\n\010ListKeys\022\030.kvstore.ListKey"
+  "sRequest\032\031.kvstore.ListKeysResponse\022Q\n\020G"
+  "etClusterStatus\022\035.kvstore.ClusterStatusR"
+  "equest\032\036.kvstore.ClusterStatusResponse\0226"
+  "\n\tReplicate\022\023.kvstore.SetRequest\032\024.kvsto"
+  "re.SetResponse\022B\n\tHeartbeat\022\031.kvstore.He"
+  "artbeatRequest\032\032.kvstore.HeartbeatRespon"
+  "se\022:\n\013RequestVote\022\024.kvstore.VoteRequest\032"
+  "\025.kvstore.VoteResponse\022N\n\rAppendEntries\022"
+  "\035.kvstore.AppendEntriesRequest\032\036.kvstore"
+  ".AppendEntriesResponseb\006proto3"
   ;
 static ::_pbi::once_flag descriptor_table_kvstore_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_kvstore_2eproto = {
-    false, false, 1613, descriptor_table_protodef_kvstore_2eproto,
+    false, false, 1670, descriptor_table_protodef_kvstore_2eproto,
     "kvstore.proto",
     &descriptor_table_kvstore_2eproto_once, nullptr, 0, 17,
     schemas, file_default_instances, TableStruct_kvstore_2eproto::offsets,
@@ -527,7 +534,7 @@ GetRequest::GetRequest(const GetRequest& from)
     _impl_.key_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_key().empty()) {
-    _this->_impl_.key_.Set(from._internal_key(),
+    _this->_impl_.key_.Set(from._internal_key(), 
       _this->GetArenaForAllocation());
   }
   // @@protoc_insertion_point(copy_constructor:kvstore.GetRequest)
@@ -723,6 +730,7 @@ GetResponse::GetResponse(const GetResponse& from)
   new (&_impl_) Impl_{
       decltype(_impl_.value_){}
     , decltype(_impl_.found_){}
+    , decltype(_impl_.leader_id_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -731,10 +739,12 @@ GetResponse::GetResponse(const GetResponse& from)
     _impl_.value_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_value().empty()) {
-    _this->_impl_.value_.Set(from._internal_value(),
+    _this->_impl_.value_.Set(from._internal_value(), 
       _this->GetArenaForAllocation());
   }
-  _this->_impl_.found_ = from._impl_.found_;
+  ::memcpy(&_impl_.found_, &from._impl_.found_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.leader_id_) -
+    reinterpret_cast<char*>(&_impl_.found_)) + sizeof(_impl_.leader_id_));
   // @@protoc_insertion_point(copy_constructor:kvstore.GetResponse)
 }
 
@@ -745,6 +755,7 @@ inline void GetResponse::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_.value_){}
     , decltype(_impl_.found_){false}
+    , decltype(_impl_.leader_id_){0}
     , /*decltype(_impl_._cached_size_)*/{}
   };
   _impl_.value_.InitDefault();
@@ -778,7 +789,9 @@ void GetResponse::Clear() {
   (void) cached_has_bits;
 
   _impl_.value_.ClearToEmpty();
-  _impl_.found_ = false;
+  ::memset(&_impl_.found_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.leader_id_) -
+      reinterpret_cast<char*>(&_impl_.found_)) + sizeof(_impl_.leader_id_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -802,6 +815,14 @@ const char* GetResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext* c
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
           _impl_.found_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 leader_id = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _impl_.leader_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -851,6 +872,12 @@ uint8_t* GetResponse::_InternalSerialize(
     target = ::_pbi::WireFormatLite::WriteBoolToArray(2, this->_internal_found(), target);
   }
 
+  // int32 leader_id = 3;
+  if (this->_internal_leader_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(3, this->_internal_leader_id(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -879,6 +906,11 @@ size_t GetResponse::ByteSizeLong() const {
     total_size += 1 + 1;
   }
 
+  // int32 leader_id = 3;
+  if (this->_internal_leader_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_leader_id());
+  }
+
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -903,6 +935,9 @@ void GetResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PR
   if (from._internal_found() != 0) {
     _this->_internal_set_found(from._internal_found());
   }
+  if (from._internal_leader_id() != 0) {
+    _this->_internal_set_leader_id(from._internal_leader_id());
+  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -926,7 +961,12 @@ void GetResponse::InternalSwap(GetResponse* other) {
       &_impl_.value_, lhs_arena,
       &other->_impl_.value_, rhs_arena
   );
-  swap(_impl_.found_, other->_impl_.found_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(GetResponse, _impl_.leader_id_)
+      + sizeof(GetResponse::_impl_.leader_id_)
+      - PROTOBUF_FIELD_OFFSET(GetResponse, _impl_.found_)>(
+          reinterpret_cast<char*>(&_impl_.found_),
+          reinterpret_cast<char*>(&other->_impl_.found_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetResponse::GetMetadata() const {
@@ -961,7 +1001,7 @@ SetRequest::SetRequest(const SetRequest& from)
     _impl_.key_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_key().empty()) {
-    _this->_impl_.key_.Set(from._internal_key(),
+    _this->_impl_.key_.Set(from._internal_key(), 
       _this->GetArenaForAllocation());
   }
   _impl_.value_.InitDefault();
@@ -969,7 +1009,7 @@ SetRequest::SetRequest(const SetRequest& from)
     _impl_.value_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_value().empty()) {
-    _this->_impl_.value_.Set(from._internal_value(),
+    _this->_impl_.value_.Set(from._internal_value(), 
       _this->GetArenaForAllocation());
   }
   // @@protoc_insertion_point(copy_constructor:kvstore.SetRequest)
@@ -1205,10 +1245,13 @@ SetResponse::SetResponse(const SetResponse& from)
   SetResponse* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.success_){}
+    , decltype(_impl_.leader_id_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _this->_impl_.success_ = from._impl_.success_;
+  ::memcpy(&_impl_.success_, &from._impl_.success_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.leader_id_) -
+    reinterpret_cast<char*>(&_impl_.success_)) + sizeof(_impl_.leader_id_));
   // @@protoc_insertion_point(copy_constructor:kvstore.SetResponse)
 }
 
@@ -1218,6 +1261,7 @@ inline void SetResponse::SharedCtor(
   (void)is_message_owned;
   new (&_impl_) Impl_{
       decltype(_impl_.success_){false}
+    , decltype(_impl_.leader_id_){0}
     , /*decltype(_impl_._cached_size_)*/{}
   };
 }
@@ -1245,7 +1289,9 @@ void SetResponse::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.success_ = false;
+  ::memset(&_impl_.success_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.leader_id_) -
+      reinterpret_cast<char*>(&_impl_.success_)) + sizeof(_impl_.leader_id_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -1259,6 +1305,14 @@ const char* SetResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext* c
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
           _impl_.success_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 leader_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.leader_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -1298,6 +1352,12 @@ uint8_t* SetResponse::_InternalSerialize(
     target = ::_pbi::WireFormatLite::WriteBoolToArray(1, this->_internal_success(), target);
   }
 
+  // int32 leader_id = 2;
+  if (this->_internal_leader_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(2, this->_internal_leader_id(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -1317,6 +1377,11 @@ size_t SetResponse::ByteSizeLong() const {
   // bool success = 1;
   if (this->_internal_success() != 0) {
     total_size += 1 + 1;
+  }
+
+  // int32 leader_id = 2;
+  if (this->_internal_leader_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_leader_id());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -1340,6 +1405,9 @@ void SetResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PR
   if (from._internal_success() != 0) {
     _this->_internal_set_success(from._internal_success());
   }
+  if (from._internal_leader_id() != 0) {
+    _this->_internal_set_leader_id(from._internal_leader_id());
+  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -1357,7 +1425,12 @@ bool SetResponse::IsInitialized() const {
 void SetResponse::InternalSwap(SetResponse* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_.success_, other->_impl_.success_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(SetResponse, _impl_.leader_id_)
+      + sizeof(SetResponse::_impl_.leader_id_)
+      - PROTOBUF_FIELD_OFFSET(SetResponse, _impl_.success_)>(
+          reinterpret_cast<char*>(&_impl_.success_),
+          reinterpret_cast<char*>(&other->_impl_.success_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata SetResponse::GetMetadata() const {
@@ -1391,7 +1464,7 @@ DeleteRequest::DeleteRequest(const DeleteRequest& from)
     _impl_.key_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_key().empty()) {
-    _this->_impl_.key_.Set(from._internal_key(),
+    _this->_impl_.key_.Set(from._internal_key(), 
       _this->GetArenaForAllocation());
   }
   // @@protoc_insertion_point(copy_constructor:kvstore.DeleteRequest)
@@ -1586,10 +1659,13 @@ DeleteResponse::DeleteResponse(const DeleteResponse& from)
   DeleteResponse* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.success_){}
+    , decltype(_impl_.leader_id_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _this->_impl_.success_ = from._impl_.success_;
+  ::memcpy(&_impl_.success_, &from._impl_.success_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.leader_id_) -
+    reinterpret_cast<char*>(&_impl_.success_)) + sizeof(_impl_.leader_id_));
   // @@protoc_insertion_point(copy_constructor:kvstore.DeleteResponse)
 }
 
@@ -1599,6 +1675,7 @@ inline void DeleteResponse::SharedCtor(
   (void)is_message_owned;
   new (&_impl_) Impl_{
       decltype(_impl_.success_){false}
+    , decltype(_impl_.leader_id_){0}
     , /*decltype(_impl_._cached_size_)*/{}
   };
 }
@@ -1626,7 +1703,9 @@ void DeleteResponse::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.success_ = false;
+  ::memset(&_impl_.success_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.leader_id_) -
+      reinterpret_cast<char*>(&_impl_.success_)) + sizeof(_impl_.leader_id_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -1640,6 +1719,14 @@ const char* DeleteResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
           _impl_.success_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 leader_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.leader_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -1679,6 +1766,12 @@ uint8_t* DeleteResponse::_InternalSerialize(
     target = ::_pbi::WireFormatLite::WriteBoolToArray(1, this->_internal_success(), target);
   }
 
+  // int32 leader_id = 2;
+  if (this->_internal_leader_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(2, this->_internal_leader_id(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -1698,6 +1791,11 @@ size_t DeleteResponse::ByteSizeLong() const {
   // bool success = 1;
   if (this->_internal_success() != 0) {
     total_size += 1 + 1;
+  }
+
+  // int32 leader_id = 2;
+  if (this->_internal_leader_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_leader_id());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -1721,6 +1819,9 @@ void DeleteResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const :
   if (from._internal_success() != 0) {
     _this->_internal_set_success(from._internal_success());
   }
+  if (from._internal_leader_id() != 0) {
+    _this->_internal_set_leader_id(from._internal_leader_id());
+  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -1738,7 +1839,12 @@ bool DeleteResponse::IsInitialized() const {
 void DeleteResponse::InternalSwap(DeleteResponse* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_.success_, other->_impl_.success_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(DeleteResponse, _impl_.leader_id_)
+      + sizeof(DeleteResponse::_impl_.leader_id_)
+      - PROTOBUF_FIELD_OFFSET(DeleteResponse, _impl_.success_)>(
+          reinterpret_cast<char*>(&_impl_.success_),
+          reinterpret_cast<char*>(&other->_impl_.success_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata DeleteResponse::GetMetadata() const {
@@ -3186,7 +3292,7 @@ LogEntry::LogEntry(const LogEntry& from)
     _impl_.key_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_key().empty()) {
-    _this->_impl_.key_.Set(from._internal_key(),
+    _this->_impl_.key_.Set(from._internal_key(), 
       _this->GetArenaForAllocation());
   }
   _impl_.value_.InitDefault();
@@ -3194,7 +3300,7 @@ LogEntry::LogEntry(const LogEntry& from)
     _impl_.value_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_value().empty()) {
-    _this->_impl_.value_.Set(from._internal_value(),
+    _this->_impl_.value_.Set(from._internal_value(), 
       _this->GetArenaForAllocation());
   }
   _this->_impl_.term_ = from._impl_.term_;
