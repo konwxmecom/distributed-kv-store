@@ -355,6 +355,43 @@ TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
     waitpid(third_pid, nullptr, 0);
 }
 
+TEST(RaftIntegration, EmptyAppendEntriesPreservesMatchingSuffix) {
+    const std::string port = "18059";
+    const std::string address = "localhost:" + port;
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+    for (const auto& key : {"heartbeat-prefix", "heartbeat-suffix"}) {
+        kvstore::SetRequest set_request;
+        set_request.set_key(key);
+        set_request.set_value("value");
+        kvstore::SetResponse set_response;
+        grpc::ClientContext set_context;
+        ASSERT_TRUE(stub.Set(&set_context, set_request, &set_response).ok());
+        ASSERT_TRUE(set_response.success());
+    }
+
+    kvstore::ClusterStatusRequest cluster_request;
+    kvstore::ClusterStatusResponse cluster_response;
+    grpc::ClientContext cluster_context;
+    ASSERT_TRUE(stub.GetClusterStatus(&cluster_context, cluster_request, &cluster_response).ok());
+
+    kvstore::AppendEntriesRequest append_request;
+    append_request.set_leader_term(cluster_response.current_term());
+    append_request.set_leader_id(std::stoi(port));
+    append_request.set_prev_log_index(cluster_response.commit_index() - 1);
+    append_request.set_prev_log_term(cluster_response.current_term());
+    kvstore::AppendEntriesResponse append_response;
+    grpc::ClientContext append_context;
+    ASSERT_TRUE(stub.AppendEntries(&append_context, append_request, &append_response).ok());
+    ASSERT_TRUE(append_response.success());
+    EXPECT_EQ(append_response.match_index(), cluster_response.commit_index());
+}
+
 TEST(RaftIntegration, CompactsCommittedLogIntoSnapshot) {
     const std::string port = "18058";
     const std::string address = "localhost:" + port;

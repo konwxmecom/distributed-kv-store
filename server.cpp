@@ -658,6 +658,13 @@ public:
         int prev_index = request->prev_log_index();
         int prev_term = request->prev_log_term();
 
+        if (prev_index < snapshot_last_index)
+        {
+            response->set_term(current_term);
+            response->set_success(false);
+            return Status::OK;
+        }
+
         // Consistency check: reject if our log doesn't match what the leader expects.
         // The leader will back off and retry with an earlier index.
         if (prev_index >= 0)
@@ -674,14 +681,34 @@ public:
             }
         }
 
-        // Drop any conflicting entries and append the new ones.
-        const int prefix_size = prev_index < log_offset ? 0 : prev_index - log_offset + 1;
-        log_entries.resize(prefix_size);
-        for (const auto &e : request->entries())
+        // Preserve matching entries and their suffix; truncate only at the
+        // first conflicting entry, as required by Raft's log-matching rule.
+        bool log_changed = false;
+        int entry_index = prev_index + 1;
+        for (const auto &entry : request->entries())
         {
-            log_entries.push_back(e);
+            const int entry_offset = entry_index - log_offset;
+            if (entry_offset >= 0 && entry_offset < static_cast<int>(log_entries.size()))
+            {
+                if (log_entries[entry_offset].term() == entry.term())
+                {
+                    ++entry_index;
+                    continue;
+                }
+                if (entry_index <= commit_index)
+                {
+                    response->set_term(current_term);
+                    response->set_success(false);
+                    return Status::OK;
+                }
+                log_entries.resize(entry_offset);
+            }
+            log_entries.push_back(entry);
+            log_changed = true;
+            ++entry_index;
         }
-        RewriteWal();
+        if (log_changed)
+            RewriteWal();
 
         if (request->leader_commit() > commit_index)
         {
