@@ -250,6 +250,7 @@ TEST(RaftIntegration, ListsKeysAndReportsClusterStatus) {
     const auto list_status = stub.ListKeys(&list_ctx, list_req, &list_resp);
     ASSERT_TRUE(list_status.ok());
     ASSERT_EQ(list_resp.keys_size(), 2);
+    EXPECT_EQ(list_resp.leader_id(), std::stoi(port));
     EXPECT_NE(std::find(list_resp.keys().begin(), list_resp.keys().end(), "first"), list_resp.keys().end());
     EXPECT_NE(std::find(list_resp.keys().begin(), list_resp.keys().end(), "second"), list_resp.keys().end());
 

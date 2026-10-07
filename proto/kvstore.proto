@@ -24,8 +24,14 @@ service KVStore {
 
 // --- Basic key-value operations ---
 
+enum ReadConsistency {
+    STRONG = 0;
+    EVENTUAL = 1;
+}
+
 message GetRequest {
     string key = 1;
+    ReadConsistency consistency = 2;
 }
 
 message GetResponse {
@@ -53,10 +59,13 @@ message DeleteResponse {
     int32 leader_id = 2;
 }
 
-message ListKeysRequest {}
+message ListKeysRequest {
+    ReadConsistency consistency = 1;
+}
 
 message ListKeysResponse {
     repeated string keys = 1;
+    int32 leader_id = 2;
 }
 
 message ClusterStatusRequest {}

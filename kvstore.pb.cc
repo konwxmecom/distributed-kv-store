@@ -24,6 +24,7 @@ namespace kvstore {
 PROTOBUF_CONSTEXPR GetRequest::GetRequest(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.key_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.consistency_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct GetRequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR GetRequestDefaultTypeInternal()
@@ -105,7 +106,9 @@ struct DeleteResponseDefaultTypeInternal {
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DeleteResponseDefaultTypeInternal _DeleteResponse_default_instance_;
 PROTOBUF_CONSTEXPR ListKeysRequest::ListKeysRequest(
-    ::_pbi::ConstantInitialized) {}
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.consistency_)*/0
+  , /*decltype(_impl_._cached_size_)*/{}} {}
 struct ListKeysRequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ListKeysRequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -118,6 +121,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 PROTOBUF_CONSTEXPR ListKeysResponse::ListKeysResponse(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.keys_)*/{}
+  , /*decltype(_impl_.leader_id_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct ListKeysResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ListKeysResponseDefaultTypeInternal()
@@ -263,7 +267,7 @@ struct AppendEntriesResponseDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AppendEntriesResponseDefaultTypeInternal _AppendEntriesResponse_default_instance_;
 }  // namespace kvstore
 static ::_pb::Metadata file_level_metadata_kvstore_2eproto[17];
-static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_kvstore_2eproto = nullptr;
+static const ::_pb::EnumDescriptor* file_level_enum_descriptors_kvstore_2eproto[1];
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_kvstore_2eproto = nullptr;
 
 const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -274,6 +278,7 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::kvstore::GetRequest, _impl_.key_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::GetRequest, _impl_.consistency_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::kvstore::GetResponse, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -320,6 +325,7 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::kvstore::ListKeysRequest, _impl_.consistency_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::kvstore::ListKeysResponse, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -327,6 +333,7 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::kvstore::ListKeysResponse, _impl_.keys_),
+  PROTOBUF_FIELD_OFFSET(::kvstore::ListKeysResponse, _impl_.leader_id_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::kvstore::ClusterStatusRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -410,22 +417,22 @@ const uint32_t TableStruct_kvstore_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::kvstore::GetRequest)},
-  { 7, -1, -1, sizeof(::kvstore::GetResponse)},
-  { 16, -1, -1, sizeof(::kvstore::SetRequest)},
-  { 24, -1, -1, sizeof(::kvstore::SetResponse)},
-  { 32, -1, -1, sizeof(::kvstore::DeleteRequest)},
-  { 39, -1, -1, sizeof(::kvstore::DeleteResponse)},
-  { 47, -1, -1, sizeof(::kvstore::ListKeysRequest)},
-  { 53, -1, -1, sizeof(::kvstore::ListKeysResponse)},
-  { 60, -1, -1, sizeof(::kvstore::ClusterStatusRequest)},
-  { 66, -1, -1, sizeof(::kvstore::ClusterStatusResponse)},
-  { 77, -1, -1, sizeof(::kvstore::HeartbeatRequest)},
-  { 85, -1, -1, sizeof(::kvstore::HeartbeatResponse)},
-  { 92, -1, -1, sizeof(::kvstore::VoteRequest)},
-  { 102, -1, -1, sizeof(::kvstore::VoteResponse)},
-  { 110, -1, -1, sizeof(::kvstore::LogEntry)},
-  { 119, -1, -1, sizeof(::kvstore::AppendEntriesRequest)},
-  { 131, -1, -1, sizeof(::kvstore::AppendEntriesResponse)},
+  { 8, -1, -1, sizeof(::kvstore::GetResponse)},
+  { 17, -1, -1, sizeof(::kvstore::SetRequest)},
+  { 25, -1, -1, sizeof(::kvstore::SetResponse)},
+  { 33, -1, -1, sizeof(::kvstore::DeleteRequest)},
+  { 40, -1, -1, sizeof(::kvstore::DeleteResponse)},
+  { 48, -1, -1, sizeof(::kvstore::ListKeysRequest)},
+  { 55, -1, -1, sizeof(::kvstore::ListKeysResponse)},
+  { 63, -1, -1, sizeof(::kvstore::ClusterStatusRequest)},
+  { 69, -1, -1, sizeof(::kvstore::ClusterStatusResponse)},
+  { 80, -1, -1, sizeof(::kvstore::HeartbeatRequest)},
+  { 88, -1, -1, sizeof(::kvstore::HeartbeatResponse)},
+  { 95, -1, -1, sizeof(::kvstore::VoteRequest)},
+  { 105, -1, -1, sizeof(::kvstore::VoteResponse)},
+  { 113, -1, -1, sizeof(::kvstore::LogEntry)},
+  { 122, -1, -1, sizeof(::kvstore::AppendEntriesRequest)},
+  { 134, -1, -1, sizeof(::kvstore::AppendEntriesResponse)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -449,52 +456,56 @@ static const ::_pb::Message* const file_default_instances[] = {
 };
 
 const char descriptor_table_protodef_kvstore_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
-  "\n\rkvstore.proto\022\007kvstore\"\031\n\nGetRequest\022\013"
-  "\n\003key\030\001 \001(\t\">\n\013GetResponse\022\r\n\005value\030\001 \001("
-  "\t\022\r\n\005found\030\002 \001(\010\022\021\n\tleader_id\030\003 \001(\005\"(\n\nS"
-  "etRequest\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\"1\n"
-  "\013SetResponse\022\017\n\007success\030\001 \001(\010\022\021\n\tleader_"
-  "id\030\002 \001(\005\"\034\n\rDeleteRequest\022\013\n\003key\030\001 \001(\t\"4"
-  "\n\016DeleteResponse\022\017\n\007success\030\001 \001(\010\022\021\n\tlea"
-  "der_id\030\002 \001(\005\"\021\n\017ListKeysRequest\" \n\020ListK"
-  "eysResponse\022\014\n\004keys\030\001 \003(\t\"\026\n\024ClusterStat"
-  "usRequest\"z\n\025ClusterStatusResponse\022\017\n\007no"
-  "de_id\030\001 \001(\005\022\021\n\tleader_id\030\002 \001(\005\022\024\n\014curren"
-  "t_term\030\003 \001(\005\022\024\n\014commit_index\030\004 \001(\005\022\021\n\tis"
-  "_leader\030\005 \001(\010\"<\n\020HeartbeatRequest\022\023\n\013lea"
-  "der_port\030\001 \001(\005\022\023\n\013leader_term\030\002 \001(\005\"\"\n\021H"
-  "eartbeatResponse\022\r\n\005alive\030\001 \001(\010\"~\n\013VoteR"
-  "equest\022\026\n\016candidate_term\030\001 \001(\005\022\024\n\014candid"
-  "ate_id\030\002 \001(\005\022 \n\030candidate_last_log_index"
-  "\030\003 \001(\005\022\037\n\027candidate_last_log_term\030\004 \001(\005\""
-  "8\n\014VoteResponse\022\024\n\014vote_granted\030\001 \001(\010\022\022\n"
-  "\nvoter_term\030\002 \001(\005\"4\n\010LogEntry\022\014\n\004term\030\001 "
-  "\001(\005\022\013\n\003key\030\002 \001(\t\022\r\n\005value\030\003 \001(\t\"\250\001\n\024Appe"
-  "ndEntriesRequest\022\023\n\013leader_term\030\001 \001(\005\022\021\n"
-  "\tleader_id\030\002 \001(\005\022\026\n\016prev_log_index\030\003 \001(\005"
-  "\022\025\n\rprev_log_term\030\004 \001(\005\022\"\n\007entries\030\005 \003(\013"
-  "2\021.kvstore.LogEntry\022\025\n\rleader_commit\030\006 \001"
-  "(\005\"K\n\025AppendEntriesResponse\022\014\n\004term\030\001 \001("
-  "\005\022\017\n\007success\030\002 \001(\010\022\023\n\013match_index\030\003 \001(\0052"
-  "\304\004\n\007KVStore\0220\n\003Get\022\023.kvstore.GetRequest\032"
-  "\024.kvstore.GetResponse\0220\n\003Set\022\023.kvstore.S"
-  "etRequest\032\024.kvstore.SetResponse\0229\n\006Delet"
-  "e\022\026.kvstore.DeleteRequest\032\027.kvstore.Dele"
-  "teResponse\022\?\n\010ListKeys\022\030.kvstore.ListKey"
-  "sRequest\032\031.kvstore.ListKeysResponse\022Q\n\020G"
-  "etClusterStatus\022\035.kvstore.ClusterStatusR"
-  "equest\032\036.kvstore.ClusterStatusResponse\0226"
-  "\n\tReplicate\022\023.kvstore.SetRequest\032\024.kvsto"
-  "re.SetResponse\022B\n\tHeartbeat\022\031.kvstore.He"
-  "artbeatRequest\032\032.kvstore.HeartbeatRespon"
-  "se\022:\n\013RequestVote\022\024.kvstore.VoteRequest\032"
-  "\025.kvstore.VoteResponse\022N\n\rAppendEntries\022"
-  "\035.kvstore.AppendEntriesRequest\032\036.kvstore"
-  ".AppendEntriesResponseb\006proto3"
+  "\n\rkvstore.proto\022\007kvstore\"H\n\nGetRequest\022\013"
+  "\n\003key\030\001 \001(\t\022-\n\013consistency\030\002 \001(\0162\030.kvsto"
+  "re.ReadConsistency\">\n\013GetResponse\022\r\n\005val"
+  "ue\030\001 \001(\t\022\r\n\005found\030\002 \001(\010\022\021\n\tleader_id\030\003 \001"
+  "(\005\"(\n\nSetRequest\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002"
+  " \001(\t\"1\n\013SetResponse\022\017\n\007success\030\001 \001(\010\022\021\n\t"
+  "leader_id\030\002 \001(\005\"\034\n\rDeleteRequest\022\013\n\003key\030"
+  "\001 \001(\t\"4\n\016DeleteResponse\022\017\n\007success\030\001 \001(\010"
+  "\022\021\n\tleader_id\030\002 \001(\005\"@\n\017ListKeysRequest\022-"
+  "\n\013consistency\030\001 \001(\0162\030.kvstore.ReadConsis"
+  "tency\"3\n\020ListKeysResponse\022\014\n\004keys\030\001 \003(\t\022"
+  "\021\n\tleader_id\030\002 \001(\005\"\026\n\024ClusterStatusReque"
+  "st\"z\n\025ClusterStatusResponse\022\017\n\007node_id\030\001"
+  " \001(\005\022\021\n\tleader_id\030\002 \001(\005\022\024\n\014current_term\030"
+  "\003 \001(\005\022\024\n\014commit_index\030\004 \001(\005\022\021\n\tis_leader"
+  "\030\005 \001(\010\"<\n\020HeartbeatRequest\022\023\n\013leader_por"
+  "t\030\001 \001(\005\022\023\n\013leader_term\030\002 \001(\005\"\"\n\021Heartbea"
+  "tResponse\022\r\n\005alive\030\001 \001(\010\"~\n\013VoteRequest\022"
+  "\026\n\016candidate_term\030\001 \001(\005\022\024\n\014candidate_id\030"
+  "\002 \001(\005\022 \n\030candidate_last_log_index\030\003 \001(\005\022"
+  "\037\n\027candidate_last_log_term\030\004 \001(\005\"8\n\014Vote"
+  "Response\022\024\n\014vote_granted\030\001 \001(\010\022\022\n\nvoter_"
+  "term\030\002 \001(\005\"4\n\010LogEntry\022\014\n\004term\030\001 \001(\005\022\013\n\003"
+  "key\030\002 \001(\t\022\r\n\005value\030\003 \001(\t\"\250\001\n\024AppendEntri"
+  "esRequest\022\023\n\013leader_term\030\001 \001(\005\022\021\n\tleader"
+  "_id\030\002 \001(\005\022\026\n\016prev_log_index\030\003 \001(\005\022\025\n\rpre"
+  "v_log_term\030\004 \001(\005\022\"\n\007entries\030\005 \003(\0132\021.kvst"
+  "ore.LogEntry\022\025\n\rleader_commit\030\006 \001(\005\"K\n\025A"
+  "ppendEntriesResponse\022\014\n\004term\030\001 \001(\005\022\017\n\007su"
+  "ccess\030\002 \001(\010\022\023\n\013match_index\030\003 \001(\005*+\n\017Read"
+  "Consistency\022\n\n\006STRONG\020\000\022\014\n\010EVENTUAL\020\0012\304\004"
+  "\n\007KVStore\0220\n\003Get\022\023.kvstore.GetRequest\032\024."
+  "kvstore.GetResponse\0220\n\003Set\022\023.kvstore.Set"
+  "Request\032\024.kvstore.SetResponse\0229\n\006Delete\022"
+  "\026.kvstore.DeleteRequest\032\027.kvstore.Delete"
+  "Response\022\?\n\010ListKeys\022\030.kvstore.ListKeysR"
+  "equest\032\031.kvstore.ListKeysResponse\022Q\n\020Get"
+  "ClusterStatus\022\035.kvstore.ClusterStatusReq"
+  "uest\032\036.kvstore.ClusterStatusResponse\0226\n\t"
+  "Replicate\022\023.kvstore.SetRequest\032\024.kvstore"
+  ".SetResponse\022B\n\tHeartbeat\022\031.kvstore.Hear"
+  "tbeatRequest\032\032.kvstore.HeartbeatResponse"
+  "\022:\n\013RequestVote\022\024.kvstore.VoteRequest\032\025."
+  "kvstore.VoteResponse\022N\n\rAppendEntries\022\035."
+  "kvstore.AppendEntriesRequest\032\036.kvstore.A"
+  "ppendEntriesResponseb\006proto3"
   ;
 static ::_pbi::once_flag descriptor_table_kvstore_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_kvstore_2eproto = {
-    false, false, 1670, descriptor_table_protodef_kvstore_2eproto,
+    false, false, 1828, descriptor_table_protodef_kvstore_2eproto,
     "kvstore.proto",
     &descriptor_table_kvstore_2eproto_once, nullptr, 0, 17,
     schemas, file_default_instances, TableStruct_kvstore_2eproto::offsets,
@@ -508,6 +519,20 @@ PROTOBUF_ATTRIBUTE_WEAK const ::_pbi::DescriptorTable* descriptor_table_kvstore_
 // Force running AddDescriptors() at dynamic initialization time.
 PROTOBUF_ATTRIBUTE_INIT_PRIORITY2 static ::_pbi::AddDescriptorsRunner dynamic_init_dummy_kvstore_2eproto(&descriptor_table_kvstore_2eproto);
 namespace kvstore {
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ReadConsistency_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_kvstore_2eproto);
+  return file_level_enum_descriptors_kvstore_2eproto[0];
+}
+bool ReadConsistency_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+      return true;
+    default:
+      return false;
+  }
+}
+
 
 // ===================================================================
 
@@ -526,6 +551,7 @@ GetRequest::GetRequest(const GetRequest& from)
   GetRequest* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.key_){}
+    , decltype(_impl_.consistency_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -537,6 +563,7 @@ GetRequest::GetRequest(const GetRequest& from)
     _this->_impl_.key_.Set(from._internal_key(), 
       _this->GetArenaForAllocation());
   }
+  _this->_impl_.consistency_ = from._impl_.consistency_;
   // @@protoc_insertion_point(copy_constructor:kvstore.GetRequest)
 }
 
@@ -546,6 +573,7 @@ inline void GetRequest::SharedCtor(
   (void)is_message_owned;
   new (&_impl_) Impl_{
       decltype(_impl_.key_){}
+    , decltype(_impl_.consistency_){0}
     , /*decltype(_impl_._cached_size_)*/{}
   };
   _impl_.key_.InitDefault();
@@ -579,6 +607,7 @@ void GetRequest::Clear() {
   (void) cached_has_bits;
 
   _impl_.key_.ClearToEmpty();
+  _impl_.consistency_ = 0;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -595,6 +624,15 @@ const char* GetRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext* ct
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "kvstore.GetRequest.key"));
+        } else
+          goto handle_unusual;
+        continue;
+      // .kvstore.ReadConsistency consistency = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_consistency(static_cast<::kvstore::ReadConsistency>(val));
         } else
           goto handle_unusual;
         continue;
@@ -637,6 +675,13 @@ uint8_t* GetRequest::_InternalSerialize(
         1, this->_internal_key(), target);
   }
 
+  // .kvstore.ReadConsistency consistency = 2;
+  if (this->_internal_consistency() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      2, this->_internal_consistency(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -660,6 +705,12 @@ size_t GetRequest::ByteSizeLong() const {
         this->_internal_key());
   }
 
+  // .kvstore.ReadConsistency consistency = 2;
+  if (this->_internal_consistency() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_consistency());
+  }
+
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -680,6 +731,9 @@ void GetRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PRO
 
   if (!from._internal_key().empty()) {
     _this->_internal_set_key(from._internal_key());
+  }
+  if (from._internal_consistency() != 0) {
+    _this->_internal_set_consistency(from._internal_consistency());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -704,6 +758,7 @@ void GetRequest::InternalSwap(GetRequest* other) {
       &_impl_.key_, lhs_arena,
       &other->_impl_.key_, rhs_arena
   );
+  swap(_impl_.consistency_, other->_impl_.consistency_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetRequest::GetMetadata() const {
@@ -1861,31 +1916,172 @@ class ListKeysRequest::_Internal {
 
 ListKeysRequest::ListKeysRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
   // @@protoc_insertion_point(arena_constructor:kvstore.ListKeysRequest)
 }
 ListKeysRequest::ListKeysRequest(const ListKeysRequest& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   ListKeysRequest* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.consistency_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _this->_impl_.consistency_ = from._impl_.consistency_;
   // @@protoc_insertion_point(copy_constructor:kvstore.ListKeysRequest)
 }
 
+inline void ListKeysRequest::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.consistency_){0}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+}
 
+ListKeysRequest::~ListKeysRequest() {
+  // @@protoc_insertion_point(destructor:kvstore.ListKeysRequest)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
 
+inline void ListKeysRequest::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+}
 
+void ListKeysRequest::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void ListKeysRequest::Clear() {
+// @@protoc_insertion_point(message_clear_start:kvstore.ListKeysRequest)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.consistency_ = 0;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* ListKeysRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .kvstore.ReadConsistency consistency = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_consistency(static_cast<::kvstore::ReadConsistency>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* ListKeysRequest::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:kvstore.ListKeysRequest)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .kvstore.ReadConsistency consistency = 1;
+  if (this->_internal_consistency() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_consistency(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:kvstore.ListKeysRequest)
+  return target;
+}
+
+size_t ListKeysRequest::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:kvstore.ListKeysRequest)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // .kvstore.ReadConsistency consistency = 1;
+  if (this->_internal_consistency() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_consistency());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
 
 const ::PROTOBUF_NAMESPACE_ID::Message::ClassData ListKeysRequest::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    ListKeysRequest::MergeImpl
 };
 const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*ListKeysRequest::GetClassData() const { return &_class_data_; }
 
 
+void ListKeysRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<ListKeysRequest*>(&to_msg);
+  auto& from = static_cast<const ListKeysRequest&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:kvstore.ListKeysRequest)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (from._internal_consistency() != 0) {
+    _this->_internal_set_consistency(from._internal_consistency());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
 
+void ListKeysRequest::CopyFrom(const ListKeysRequest& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:kvstore.ListKeysRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
 
+bool ListKeysRequest::IsInitialized() const {
+  return true;
+}
 
+void ListKeysRequest::InternalSwap(ListKeysRequest* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_.consistency_, other->_impl_.consistency_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata ListKeysRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
@@ -1910,9 +2106,11 @@ ListKeysResponse::ListKeysResponse(const ListKeysResponse& from)
   ListKeysResponse* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.keys_){from._impl_.keys_}
+    , decltype(_impl_.leader_id_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _this->_impl_.leader_id_ = from._impl_.leader_id_;
   // @@protoc_insertion_point(copy_constructor:kvstore.ListKeysResponse)
 }
 
@@ -1922,6 +2120,7 @@ inline void ListKeysResponse::SharedCtor(
   (void)is_message_owned;
   new (&_impl_) Impl_{
       decltype(_impl_.keys_){arena}
+    , decltype(_impl_.leader_id_){0}
     , /*decltype(_impl_._cached_size_)*/{}
   };
 }
@@ -1951,6 +2150,7 @@ void ListKeysResponse::Clear() {
   (void) cached_has_bits;
 
   _impl_.keys_.Clear();
+  _impl_.leader_id_ = 0;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -1972,6 +2172,14 @@ const char* ListKeysResponse::_InternalParse(const char* ptr, ::_pbi::ParseConte
             CHK_(::_pbi::VerifyUTF8(str, "kvstore.ListKeysResponse.keys"));
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 leader_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.leader_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -2014,6 +2222,12 @@ uint8_t* ListKeysResponse::_InternalSerialize(
     target = stream->WriteString(1, s, target);
   }
 
+  // int32 leader_id = 2;
+  if (this->_internal_leader_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(2, this->_internal_leader_id(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -2038,6 +2252,11 @@ size_t ListKeysResponse::ByteSizeLong() const {
       _impl_.keys_.Get(i));
   }
 
+  // int32 leader_id = 2;
+  if (this->_internal_leader_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_leader_id());
+  }
+
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -2057,6 +2276,9 @@ void ListKeysResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const
   (void) cached_has_bits;
 
   _this->_impl_.keys_.MergeFrom(from._impl_.keys_);
+  if (from._internal_leader_id() != 0) {
+    _this->_internal_set_leader_id(from._internal_leader_id());
+  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -2075,6 +2297,7 @@ void ListKeysResponse::InternalSwap(ListKeysResponse* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   _impl_.keys_.InternalSwap(&other->_impl_.keys_);
+  swap(_impl_.leader_id_, other->_impl_.leader_id_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata ListKeysResponse::GetMetadata() const {

@@ -836,6 +836,23 @@ public:
     {
         if (state != NodeState::LEADER)
         {
+            if (request->consistency() == kvstore::ReadConsistency::EVENTUAL)
+            {
+                std::lock_guard<std::mutex> lock(store_mutex);
+                auto it = store.find(request->key());
+                if (it != store.end())
+                {
+                    response->set_value(it->second);
+                    response->set_found(true);
+                }
+                else
+                {
+                    response->set_found(false);
+                }
+                response->set_leader_id(known_leader_id);
+                return Status::OK;
+            }
+
             auto leader_stub = FindLeaderStub();
             if (leader_stub)
             {
@@ -875,10 +892,28 @@ public:
     {
         if (state != NodeState::LEADER)
         {
+            if (request->consistency() == kvstore::ReadConsistency::EVENTUAL)
+            {
+                std::lock_guard<std::mutex> lock(store_mutex);
+                std::vector<std::string> keys;
+                keys.reserve(store.size());
+                for (const auto &[key, value] : store)
+                {
+                    keys.push_back(key);
+                }
+                std::sort(keys.begin(), keys.end());
+                for (const auto &key : keys)
+                {
+                    response->add_keys(key);
+                }
+                response->set_leader_id(known_leader_id);
+                return Status::OK;
+            }
+
             auto leader_stub = FindLeaderStub();
             if (leader_stub)
             {
-                ListKeysRequest forwarded;
+                ListKeysRequest forwarded = *request;
                 ListKeysResponse forwarded_response;
                 ClientContext ctx;
                 ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
@@ -903,6 +938,7 @@ public:
         {
             response->add_keys(key);
         }
+        response->set_leader_id(node_id);
         return Status::OK;
     }
 

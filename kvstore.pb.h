@@ -30,6 +30,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
+#include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
@@ -119,6 +120,31 @@ template<> ::kvstore::VoteResponse* Arena::CreateMaybeMessage<::kvstore::VoteRes
 PROTOBUF_NAMESPACE_CLOSE
 namespace kvstore {
 
+enum ReadConsistency : int {
+  STRONG = 0,
+  EVENTUAL = 1,
+  ReadConsistency_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  ReadConsistency_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+};
+bool ReadConsistency_IsValid(int value);
+constexpr ReadConsistency ReadConsistency_MIN = STRONG;
+constexpr ReadConsistency ReadConsistency_MAX = EVENTUAL;
+constexpr int ReadConsistency_ARRAYSIZE = ReadConsistency_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ReadConsistency_descriptor();
+template<typename T>
+inline const std::string& ReadConsistency_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, ReadConsistency>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function ReadConsistency_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    ReadConsistency_descriptor(), enum_t_value);
+}
+inline bool ReadConsistency_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ReadConsistency* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ReadConsistency>(
+    ReadConsistency_descriptor(), name, value);
+}
 // ===================================================================
 
 class GetRequest final :
@@ -243,6 +269,7 @@ class GetRequest final :
 
   enum : int {
     kKeyFieldNumber = 1,
+    kConsistencyFieldNumber = 2,
   };
   // string key = 1;
   void clear_key();
@@ -258,6 +285,15 @@ class GetRequest final :
   std::string* _internal_mutable_key();
   public:
 
+  // .kvstore.ReadConsistency consistency = 2;
+  void clear_consistency();
+  ::kvstore::ReadConsistency consistency() const;
+  void set_consistency(::kvstore::ReadConsistency value);
+  private:
+  ::kvstore::ReadConsistency _internal_consistency() const;
+  void _internal_set_consistency(::kvstore::ReadConsistency value);
+  public:
+
   // @@protoc_insertion_point(class_scope:kvstore.GetRequest)
  private:
   class _Internal;
@@ -267,6 +303,7 @@ class GetRequest final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr key_;
+    int consistency_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -1090,9 +1127,10 @@ class DeleteResponse final :
 // -------------------------------------------------------------------
 
 class ListKeysRequest final :
-    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:kvstore.ListKeysRequest) */ {
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:kvstore.ListKeysRequest) */ {
  public:
   inline ListKeysRequest() : ListKeysRequest(nullptr) {}
+  ~ListKeysRequest() override;
   explicit PROTOBUF_CONSTEXPR ListKeysRequest(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
 
   ListKeysRequest(const ListKeysRequest& from);
@@ -1165,15 +1203,29 @@ class ListKeysRequest final :
   ListKeysRequest* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
     return CreateMaybeMessage<ListKeysRequest>(arena);
   }
-  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
-  inline void CopyFrom(const ListKeysRequest& from) {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const ListKeysRequest& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const ListKeysRequest& from) {
+    ListKeysRequest::MergeImpl(*this, from);
   }
-  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
-  void MergeFrom(const ListKeysRequest& from) {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
-  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
   public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(ListKeysRequest* other);
 
   private:
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
@@ -1194,6 +1246,18 @@ class ListKeysRequest final :
 
   // accessors -------------------------------------------------------
 
+  enum : int {
+    kConsistencyFieldNumber = 1,
+  };
+  // .kvstore.ReadConsistency consistency = 1;
+  void clear_consistency();
+  ::kvstore::ReadConsistency consistency() const;
+  void set_consistency(::kvstore::ReadConsistency value);
+  private:
+  ::kvstore::ReadConsistency _internal_consistency() const;
+  void _internal_set_consistency(::kvstore::ReadConsistency value);
+  public:
+
   // @@protoc_insertion_point(class_scope:kvstore.ListKeysRequest)
  private:
   class _Internal;
@@ -1202,7 +1266,10 @@ class ListKeysRequest final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
+    int consistency_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
+  union { Impl_ _impl_; };
   friend struct ::TableStruct_kvstore_2eproto;
 };
 // -------------------------------------------------------------------
@@ -1329,6 +1396,7 @@ class ListKeysResponse final :
 
   enum : int {
     kKeysFieldNumber = 1,
+    kLeaderIdFieldNumber = 2,
   };
   // repeated string keys = 1;
   int keys_size() const;
@@ -1354,6 +1422,15 @@ class ListKeysResponse final :
   std::string* _internal_add_keys();
   public:
 
+  // int32 leader_id = 2;
+  void clear_leader_id();
+  int32_t leader_id() const;
+  void set_leader_id(int32_t value);
+  private:
+  int32_t _internal_leader_id() const;
+  void _internal_set_leader_id(int32_t value);
+  public:
+
   // @@protoc_insertion_point(class_scope:kvstore.ListKeysResponse)
  private:
   class _Internal;
@@ -1363,6 +1440,7 @@ class ListKeysResponse final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> keys_;
+    int32_t leader_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -2948,6 +3026,26 @@ inline void GetRequest::set_allocated_key(std::string* key) {
   // @@protoc_insertion_point(field_set_allocated:kvstore.GetRequest.key)
 }
 
+// .kvstore.ReadConsistency consistency = 2;
+inline void GetRequest::clear_consistency() {
+  _impl_.consistency_ = 0;
+}
+inline ::kvstore::ReadConsistency GetRequest::_internal_consistency() const {
+  return static_cast< ::kvstore::ReadConsistency >(_impl_.consistency_);
+}
+inline ::kvstore::ReadConsistency GetRequest::consistency() const {
+  // @@protoc_insertion_point(field_get:kvstore.GetRequest.consistency)
+  return _internal_consistency();
+}
+inline void GetRequest::_internal_set_consistency(::kvstore::ReadConsistency value) {
+  
+  _impl_.consistency_ = value;
+}
+inline void GetRequest::set_consistency(::kvstore::ReadConsistency value) {
+  _internal_set_consistency(value);
+  // @@protoc_insertion_point(field_set:kvstore.GetRequest.consistency)
+}
+
 // -------------------------------------------------------------------
 
 // GetResponse
@@ -3292,6 +3390,26 @@ inline void DeleteResponse::set_leader_id(int32_t value) {
 
 // ListKeysRequest
 
+// .kvstore.ReadConsistency consistency = 1;
+inline void ListKeysRequest::clear_consistency() {
+  _impl_.consistency_ = 0;
+}
+inline ::kvstore::ReadConsistency ListKeysRequest::_internal_consistency() const {
+  return static_cast< ::kvstore::ReadConsistency >(_impl_.consistency_);
+}
+inline ::kvstore::ReadConsistency ListKeysRequest::consistency() const {
+  // @@protoc_insertion_point(field_get:kvstore.ListKeysRequest.consistency)
+  return _internal_consistency();
+}
+inline void ListKeysRequest::_internal_set_consistency(::kvstore::ReadConsistency value) {
+  
+  _impl_.consistency_ = value;
+}
+inline void ListKeysRequest::set_consistency(::kvstore::ReadConsistency value) {
+  _internal_set_consistency(value);
+  // @@protoc_insertion_point(field_set:kvstore.ListKeysRequest.consistency)
+}
+
 // -------------------------------------------------------------------
 
 // ListKeysResponse
@@ -3369,6 +3487,26 @@ inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
 ListKeysResponse::mutable_keys() {
   // @@protoc_insertion_point(field_mutable_list:kvstore.ListKeysResponse.keys)
   return &_impl_.keys_;
+}
+
+// int32 leader_id = 2;
+inline void ListKeysResponse::clear_leader_id() {
+  _impl_.leader_id_ = 0;
+}
+inline int32_t ListKeysResponse::_internal_leader_id() const {
+  return _impl_.leader_id_;
+}
+inline int32_t ListKeysResponse::leader_id() const {
+  // @@protoc_insertion_point(field_get:kvstore.ListKeysResponse.leader_id)
+  return _internal_leader_id();
+}
+inline void ListKeysResponse::_internal_set_leader_id(int32_t value) {
+  
+  _impl_.leader_id_ = value;
+}
+inline void ListKeysResponse::set_leader_id(int32_t value) {
+  _internal_set_leader_id(value);
+  // @@protoc_insertion_point(field_set:kvstore.ListKeysResponse.leader_id)
 }
 
 // -------------------------------------------------------------------
@@ -4046,6 +4184,16 @@ inline void AppendEntriesResponse::set_match_index(int32_t value) {
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace kvstore
+
+PROTOBUF_NAMESPACE_OPEN
+
+template <> struct is_proto_enum< ::kvstore::ReadConsistency> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::kvstore::ReadConsistency>() {
+  return ::kvstore::ReadConsistency_descriptor();
+}
+
+PROTOBUF_NAMESPACE_CLOSE
 
 // @@protoc_insertion_point(global_scope)
 
