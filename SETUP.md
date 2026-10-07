@@ -1,6 +1,7 @@
 # Setup Guide
 
-This guide walks through setting up the full toolchain and building the project from scratch on Windows.
+This guide covers prerequisites, build steps, and a local cluster on Windows. For Linux/macOS commands,
+automated test instructions, and the dashboard workflow, see [TEST_SETUP.md](TEST_SETUP.md).
 
 ## Prerequisites
 
@@ -109,7 +110,12 @@ In a fourth terminal:
 .\build\Debug\client.exe
 ```
 
-By default the client connects to `localhost:50051`. Point it at whichever node is currently the leader (edit the address in `client.cpp` if needed).
+The client accepts an address with `--address`; it can connect to any node and follow leader hints.
+For example:
+
+```powershell
+.\build\Debug\client.exe --address localhost:50052
+```
 
 ## 9. Run the Chaos Test (Optional)
 
@@ -132,8 +138,10 @@ the client:
 .\build\Debug\client.exe --address localhost:50051 --ca ca.pem --cert client.pem --key client-key.pem
 ```
 
-Membership can be reloaded without restarting a node. Pass `--peers-file` and keep one
-`host:port` endpoint per line; editing the file updates the peer set automatically.
+Outbound peer endpoints can be reloaded without restarting a node. Pass `--peers-file` and keep one
+`host:port` endpoint per line; editing the file updates the peer stubs. This is not Raft joint
+consensus and does not safely change a live cluster's voting membership. Keep cluster membership
+static while nodes are running.
 
 ## 11. Browser Console and Gateway
 

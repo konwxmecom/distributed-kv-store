@@ -17,7 +17,7 @@
 - **Durable recovery** — committed log entries and Raft election metadata survive process restarts
 - **Snapshots and compaction** — committed state is periodically snapshotted to bound WAL growth
 - **Optional mutual TLS** — client and peer connections can require verified certificates
-- **Reloadable membership** — peer endpoints can be changed through a watched configuration file
+- **Reloadable peer configuration** — outbound peer endpoints can be reloaded from a watched file; this is not consensus-safe Raft membership change
 - **Operator console** — a responsive browser dashboard for inspecting keys and cluster activity
 
 ## Architecture
@@ -48,7 +48,8 @@ Writes flow through a **replicated log**: an entry is first appended locally, th
 
 ## Getting Started
 
-See [SETUP.md](./SETUP.md) for full, step-by-step instructions on setting up the toolchain, building the project, and running a multi-node cluster.
+See [SETUP.md](./SETUP.md) for toolchain and cluster setup, and [TEST_SETUP.md](./TEST_SETUP.md) for automated tests and the dashboard workflow.
+See [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) for the remaining work and validation needed before production use.
 
 ### Linux and macOS
 
@@ -86,7 +87,7 @@ cmake --build build
 .\build\Debug\client.exe
 ```
 
-For repeatable deployments, start a node from a config file:
+For repeatable local deployments, start a node from a config file:
 
 ```text
 ./build/server --config config/node.conf
@@ -157,8 +158,8 @@ localhost:50053
 
 The membership watcher reloads changed peer files during runtime and rebuilds the
 outbound gRPC stubs without restarting the node. This does not implement Raft joint
-consensus; use static membership at startup for the demo. Keep one endpoint per line and
-do not leave the file empty.
+consensus and must not be used to change the voting membership of a running cluster.
+Use static membership at startup. Keep one endpoint per line and do not leave the file empty.
 
 ## Operator console
 
@@ -213,10 +214,12 @@ term, commit index, and leader state.
 
 ### Production Status
 
-This repository is a learning/demo system, not a production-ready managed database. Keep gRPC and
-gateway ports on trusted networks; per-user dashboard authentication does not authenticate direct
-gRPC clients. Before public deployment, add TLS/network policy, rate limiting and audit controls,
-and validate recovery and membership-change behavior under failure.
+This project is an experimental/demo distributed store, not a production-ready database. It includes
+Raft replication, persistence, snapshots, optional mutual TLS, dashboard account isolation, gateway
+rate limiting, and basic metrics, but these features have not by themselves established production
+reliability. Dashboard authentication does not authenticate direct gRPC clients. Keep all service
+ports on trusted networks and do not store production data until the requirements and validation in
+[PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) are complete.
 
 ## License
 

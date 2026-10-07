@@ -1,6 +1,6 @@
 # Test, Setup, and Run Guide
 
-This guide explains how to build, test, run, and verify the Distributed KV Store from a clean local machine or a GitHub Codespace. The existing `README.md` and `SETUP.md` remain unchanged; this file adds a complete testing and operator workflow.
+This guide explains how to build, test, run, and verify the Distributed KV Store from a clean local machine or a GitHub Codespace. See [README.md](README.md) for capabilities and limits, and [SETUP.md](SETUP.md) for Windows-specific setup.
 
 ## 1. Project Requirements
 
@@ -89,7 +89,7 @@ cmake --build build --parallel
 
 ## 5. Run Automated Tests
 
-Run the complete CTest suite:
+Run the complete C++ CTest suite (the Raft integration target starts local server processes and can take over a minute):
 
 ```bash
 rm -rf build/data/node_18051 build/data/node_18052 build/data/node_18053 \
@@ -98,7 +98,7 @@ rm -rf build/data/node_18051 build/data/node_18052 build/data/node_18053 \
 ctest --test-dir build --output-on-failure
 ```
 
-The suite currently includes:
+The C++ suite currently includes:
 
 - `runtime_config_tests`: configuration parsing, invalid values, comments, and TLS validation
 - `raft_tests`: multi-node startup, leader election, replication, persistence, failover, and follower forwarding behavior
@@ -118,11 +118,15 @@ ctest --test-dir build -V
 
 The integration tests start temporary server processes and use test ports. The cleanup command above prevents old WAL/snapshot state from affecting the persistence and follower-forwarding tests. Stop any manually started test cluster before rerunning tests if a port is reported as busy.
 
-Run the gateway's account-isolation, backup/restore, and topology tests with:
+Run the gateway's account-isolation, backup/restore, rate-limit, and topology tests with:
 
 ```bash
 python3 -m unittest tests/test_gateway.py -v
 ```
+
+CI runs the C++ build/tests and sanitizer configurations. Run the Python gateway tests locally as
+shown above; they are a separate suite. A passing test run is not a production-readiness guarantee;
+see [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for required operational and failure testing.
 
 ## 6. Run a Manual Three-Node Cluster
 
