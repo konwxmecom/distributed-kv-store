@@ -140,9 +140,27 @@ class GatewayHandler(BaseHTTPRequestHandler):
     allowed_origins = set()
     users = {}
     session_secret = b""
+    audit_log_path = ""
     rate_limit_window_seconds = RATE_LIMIT_WINDOW_SECONDS
     rate_limit_max_requests = RATE_LIMIT_MAX_REQUESTS
     _login_bucket = {}
+
+    def _audit_event(self, event, success, username="", key="", details=None):
+        if not self.__class__.audit_log_path:
+            return
+        entry = {
+            "ts": int(time.time()),
+            "event": event,
+            "success": bool(success),
+            "username": username or None,
+            "key": key or None,
+            "details": details,
+            "remote_ip": self.client_address[0] if hasattr(self, "client_address") else None,
+        }
+        target = Path(self.__class__.audit_log_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry, sort_keys=True) + "\n")
 
     def _rate_limit_key(self):
         forwarded = self.headers.get("X-Forwarded-For")
@@ -406,14 +424,17 @@ class GatewayHandler(BaseHTTPRequestHandler):
             record = self.users.get(username)
             if not record or not verify_password(record, password):
                 self._record_metric("auth_failure", 401)
+                self._audit_event("login", False, username=username, details="invalid_credentials")
                 self._send(401, {"error": "invalid username or password"})
                 return
             token = issue_session(username, self.session_secret)
             secure = "; Secure" if self.headers.get("Origin", "").startswith("https://") else ""
             cookie = f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_TTL_SECONDS}{secure}"
+            self._audit_event("login", True, username=username, details="success")
             self._send(200, {"user": username}, (("Set-Cookie", cookie),))
             return
         if path == "/api/logout":
+            self._audit_event("logout", True, username=self._current_user() or "", details="success")
             self._send(200, {"success": True}, (("Set-Cookie", f"{SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"),))
             return
         username = self._require_user()
@@ -485,37 +506,46 @@ class GatewayHandler(BaseHTTPRequestHandler):
             self._send(400, {"error": str(error)})
 
     def _set_entry(self, key, value, display_key):
+        username = self._current_user() or ""
         if not key or not value:
             self._record_metric("set", 400)
+            self._audit_event("set", False, username=username, key=display_key, details="missing_key_or_value")
             self._send(400, {"error": "key and value are required"})
             return
         try:
             response = self.stub.Set(self.pb2.SetRequest(key=key, value=value), timeout=5)
             if not response.success:
                 self._record_metric("set", 409)
+                self._audit_event("set", False, username=username, key=display_key, details="not_committed")
                 self._send(409, {"success": False, "error": "write was not committed"})
                 return
             self._record_metric("set", 200)
+            self._audit_event("set", True, username=username, key=display_key, details={"value_length": len(value)})
             self._send(200, {"success": True, "key": display_key, "value": value})
         except grpc.RpcError as error:
             self._record_metric("set", 502)
+            self._audit_event("set", False, username=username, key=display_key, details=error.details())
             self._send(502, {"success": False, "error": error.details()})
 
     def _delete_entry(self, username, key):
         if not key:
             self._record_metric("delete", 400)
+            self._audit_event("delete", False, username=username, key=key, details="missing_key")
             self._send(400, {"error": "key is required"})
             return
         try:
             response = self.stub.Delete(self.pb2.DeleteRequest(key=self._storage_key(username, key)), timeout=5)
             if not response.success:
                 self._record_metric("delete", 409)
+                self._audit_event("delete", False, username=username, key=key, details="not_committed")
                 self._send(409, {"success": False, "error": "delete was not committed"})
                 return
             self._record_metric("delete", 200)
+            self._audit_event("delete", True, username=username, key=key, details="success")
             self._send(200, {"success": True, "key": key})
         except grpc.RpcError as error:
             self._record_metric("delete", 502)
+            self._audit_event("delete", False, username=username, key=key, details=error.details())
             self._send(502, {"success": False, "error": error.details()})
 
     def do_DELETE(self):
@@ -559,6 +589,7 @@ def main():
     parser.add_argument("--allowed-origin", action="append", default=[], help="additional dashboard origin allowed to call the gateway")
     parser.add_argument("--users-file", help="private JSON file of PBKDF2 password records; enables per-user key isolation")
     parser.add_argument("--node", action="append", default=[], help="additional cluster node address for topology; may be repeated")
+    parser.add_argument("--audit-log", help="append structured audit records to this JSON Lines file")
     parser.add_argument("--ca", help="CA certificate for mTLS")
     parser.add_argument("--cert", help="client certificate for mTLS")
     parser.add_argument("--key", help="client private key for mTLS")
@@ -566,6 +597,7 @@ def main():
 
     GatewayHandler.users = {}
     GatewayHandler.session_secret = b""
+    GatewayHandler.audit_log_path = os.environ.get("GATEWAY_AUDIT_LOG", args.audit_log or "")
     if args.users_file:
         try:
             GatewayHandler.users = load_users(args.users_file)

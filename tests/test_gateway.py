@@ -91,6 +91,7 @@ class GatewayHttpTests(unittest.TestCase):
         gateway.GatewayHandler.users = cls._originals["users"]
         gateway.GatewayHandler.session_secret = cls._originals["secret"]
         gateway.GatewayHandler.allowed_origins = cls._originals["origins"]
+        gateway.GatewayHandler.audit_log_path = ""
         gateway.GatewayHandler.pb2 = cls._originals["pb2"]
         gateway.GatewayHandler.stub = cls._originals["stub"]
 
@@ -218,6 +219,19 @@ class GatewayHttpTests(unittest.TestCase):
         status, _, body = self.login(client, "alice", "wrong-password")
         self.assertEqual(status, 429)
         self.assertIn("rate limit", json.loads(body)["error"].lower())
+
+    def test_login_and_mutation_are_audited(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit_path = gateway.Path(directory) / "audit.log"
+            gateway.GatewayHandler.audit_log_path = str(audit_path)
+            gateway.GatewayHandler._login_bucket = {}
+            client = self.client()
+            self.assertEqual(self.login(client, "alice", "alice-password-123")[0], 200)
+            self.assertEqual(self.request(client, "/api/entry", {"key": "audit-key", "value": "audit-value"}, "POST")[0], 200)
+            self.assertTrue(audit_path.exists())
+            lines = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertTrue(any(item.get("event") == "login" and item.get("username") == "alice" for item in lines))
+            self.assertTrue(any(item.get("event") == "set" and item.get("username") == "alice" for item in lines))
 
 
 if __name__ == "__main__":
