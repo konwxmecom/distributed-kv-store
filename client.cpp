@@ -1,17 +1,21 @@
 #include <chrono>
+#include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <functional>
 #include <memory>
+#include <random>
 #include <string>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 #include <grpcpp/grpcpp.h>
 #include "kvstore.grpc.pb.h"
 
-using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
+using grpc::Channel;
 using kvstore::GetRequest;
 using kvstore::GetResponse;
 using kvstore::KVStore;
@@ -46,6 +50,10 @@ private:
     std::shared_ptr<Channel> channel_;
     std::unique_ptr<KVStore::Stub> stub_;
     std::string current_address_;
+    std::shared_ptr<grpc::ChannelCredentials> credentials_;
+    std::vector<std::string> addresses_;
+    std::string client_id_;
+    std::uint64_t request_sequence_ = 0;
 
     template <typename Request, typename Response>
     bool TryCall(const std::string &method_name,
@@ -54,6 +62,7 @@ private:
                  std::function<Status(grpc::ClientContext *, const Request &, Response *)> call)
     {
         grpc::ClientContext context;
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
         Status status = call(&context, request, response);
         if (status.ok())
             return true;
@@ -64,20 +73,66 @@ private:
 
     void ReconnectToLeader(int leader_port)
     {
-        const auto next_address = "localhost:" + std::to_string(leader_port);
+        std::string next_address = "localhost:" + std::to_string(leader_port);
+        for (const auto &address : addresses_)
+        {
+            const auto separator = address.rfind(':');
+            if (separator != std::string::npos &&
+                address.substr(separator + 1) == std::to_string(leader_port))
+            {
+                next_address = address;
+                break;
+            }
+        }
+        ReconnectToAddress(next_address);
+    }
+
+    void ReconnectToAddress(const std::string &next_address)
+    {
         if (next_address == current_address_)
             return;
         current_address_ = next_address;
-        channel_ = grpc::CreateChannel(next_address, grpc::InsecureChannelCredentials());
+        channel_ = grpc::CreateChannel(next_address, credentials_);
         stub_ = KVStore::NewStub(channel_);
     }
 
-public:
-    explicit KVStoreClient(std::shared_ptr<Channel> channel, std::string initial_address = "")
-        : channel_(std::move(channel)), stub_(KVStore::NewStub(channel_)), current_address_(std::move(initial_address))
+    void ReconnectToNextAddress()
     {
-        if (current_address_.empty())
-            current_address_ = "localhost:50051";
+        const auto current = std::find(addresses_.begin(), addresses_.end(), current_address_);
+        if (current == addresses_.end() || addresses_.size() < 2)
+            return;
+        const auto next = std::next(current) == addresses_.end() ? addresses_.begin() : std::next(current);
+        ReconnectToAddress(*next);
+    }
+
+public:
+    explicit KVStoreClient(std::vector<std::string> addresses,
+                           std::shared_ptr<grpc::ChannelCredentials> credentials)
+        : credentials_(std::move(credentials)), addresses_(std::move(addresses))
+    {
+        if (addresses_.empty())
+            throw std::invalid_argument("at least one server address is required");
+        std::random_device random;
+        client_id_ = "client-" + std::to_string(random()) + "-" + std::to_string(random());
+        for (const auto &address : addresses_)
+        {
+            auto candidate_channel = grpc::CreateChannel(address, credentials_);
+            auto candidate_stub = KVStore::NewStub(candidate_channel);
+            kvstore::ClusterStatusRequest request;
+            kvstore::ClusterStatusResponse response;
+            grpc::ClientContext context;
+            context.set_deadline(std::chrono::system_clock::now() + std::chrono::milliseconds(500));
+            if (candidate_stub->GetClusterStatus(&context, request, &response).ok() && response.is_leader())
+            {
+                current_address_ = address;
+                channel_ = std::move(candidate_channel);
+                stub_ = std::move(candidate_stub);
+                return;
+            }
+        }
+        current_address_ = addresses_.front();
+        channel_ = grpc::CreateChannel(current_address_, credentials_);
+        stub_ = KVStore::NewStub(channel_);
     }
 
     bool Set(const std::string &key, const std::string &value)
@@ -85,6 +140,7 @@ public:
         const std::string request_id = "client-set-" +
             std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count());
+        const std::uint64_t request_sequence = ++request_sequence_;
 
         for (int attempt = 0; attempt < 3; ++attempt)
         {
@@ -92,22 +148,31 @@ public:
             request.set_key(key);
             request.set_value(value);
             request.set_request_id(request_id);
+            request.set_client_id(client_id_);
+            request.set_request_sequence(request_sequence);
 
             SetResponse response;
             grpc::ClientContext context;
+            context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
             const Status status = stub_->Set(&context, request, &response);
             if (status.ok())
             {
-                if (response.leader_id() > 0 && response.leader_id() != std::stoi(current_address_.substr(current_address_.find(':') + 1)))
+                if (response.success())
+                    return true;
+                if (response.leader_id() > 0)
                 {
+                    const auto previous_address = current_address_;
                     ReconnectToLeader(response.leader_id());
-                    continue;
+                    if (current_address_ != previous_address)
+                        continue;
                 }
-                return response.success();
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                continue;
             }
 
             std::cout << "Set failed: " << status.error_message() << std::endl;
-            break;
+            ReconnectToNextAddress();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         return false;
     }
@@ -116,21 +181,33 @@ public:
     {
         GetRequest request;
         request.set_key(key);
-
-        GetResponse response;
-        grpc::ClientContext context;
-        Status status = stub_->Get(&context, request, &response);
-        if (status.ok())
+        for (int attempt = 0; attempt < 3; ++attempt)
         {
-            if (response.found())
+            GetResponse response;
+            grpc::ClientContext context;
+            context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
+            const Status status = stub_->Get(&context, request, &response);
+            if (status.ok())
             {
-                value_out = response.value();
-                return true;
+                if (response.leader_id() > 0)
+                {
+                    const auto previous_address = current_address_;
+                    ReconnectToLeader(response.leader_id());
+                    if (current_address_ != previous_address)
+                        continue;
+                }
+                if (response.found())
+                {
+                    value_out = response.value();
+                    return true;
+                }
+                return false;
             }
-            return false;
+            std::cout << "Get failed: " << status.error_message() << std::endl;
+            ReconnectToNextAddress();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
-        std::cout << "Get failed: " << status.error_message() << std::endl;
         return false;
     }
 };
@@ -169,27 +246,7 @@ int main(int argc, char **argv)
         credentials = grpc::InsecureChannelCredentials();
     }
 
-    std::shared_ptr<grpc::Channel> channel;
-    for (const std::string &address : addresses)
-    {
-        try
-        {
-            channel = grpc::CreateChannel(address, credentials);
-            break;
-        }
-        catch (const std::exception &ex)
-        {
-            std::cout << "Failed to open channel to " << address << ": " << ex.what() << std::endl;
-        }
-    }
-
-    if (!channel)
-    {
-        std::cerr << "Could not create a valid gRPC channel to any configured endpoint." << std::endl;
-        return 1;
-    }
-
-    KVStoreClient client(channel);
+    KVStoreClient client(addresses, credentials);
 
     // Basic smoke test: write a key, read it back, and confirm a missing
     // key correctly reports "not found".

@@ -42,14 +42,12 @@ bool WaitForServer(const std::string& address, int timeout_seconds = 20) {
     auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
     kvstore::KVStore::Stub stub(channel);
     while (std::chrono::steady_clock::now() < deadline) {
-        kvstore::HeartbeatRequest req;
-        req.set_leader_port(0);
-        req.set_leader_term(0);
-        kvstore::HeartbeatResponse resp;
+        kvstore::ClusterStatusRequest req;
+        kvstore::ClusterStatusResponse resp;
         grpc::ClientContext context;
         context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
-        const auto status = stub.Heartbeat(&context, req, &resp);
-        if (status.ok() && resp.alive()) {
+        const auto status = stub.GetClusterStatus(&context, req, &resp);
+        if (status.ok()) {
             return true;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -134,6 +132,10 @@ struct TestServer {
 struct TestCluster {
     explicit TestCluster(const std::vector<std::string>& ports) {
         for (const auto& port : ports) {
+            std::error_code error;
+            std::filesystem::remove_all(std::filesystem::path("data") / ("node_" + port), error);
+        }
+        for (const auto& port : ports) {
             std::vector<std::string> peers;
             for (const auto& peer_port : ports) {
                 if (peer_port != port) {
@@ -182,6 +184,49 @@ TEST(RaftIntegration, LeaderSetAndGetRoundTrip) {
     ASSERT_TRUE(get_resp.found());
     EXPECT_EQ(get_resp.value(), "beta");
 
+}
+
+TEST(RaftIntegration, LeaderCommitsNoOpBeforeReportingReadiness) {
+    const std::string port = "18070";
+    const std::string address = "localhost:" + port;
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+    kvstore::ClusterStatusResponse status_response;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (std::chrono::steady_clock::now() < deadline) {
+        kvstore::ClusterStatusRequest status_request;
+        grpc::ClientContext status_context;
+        status_context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+        ASSERT_TRUE(stub.GetClusterStatus(&status_context, status_request, &status_response).ok());
+        if (status_response.is_leader()) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    ASSERT_TRUE(status_response.is_leader());
+    EXPECT_GE(status_response.commit_index(), 0);
+
+    kvstore::GetRequest get_request;
+    kvstore::GetResponse get_response;
+    grpc::ClientContext get_context;
+    ASSERT_TRUE(stub.Get(&get_context, get_request, &get_response).ok());
+    EXPECT_FALSE(get_response.found());
+
+    kvstore::VoteRequest pre_vote;
+    pre_vote.set_candidate_term(status_response.current_term() + 1);
+    pre_vote.set_candidate_id(18071);
+    pre_vote.set_candidate_last_log_index(status_response.commit_index());
+    pre_vote.set_candidate_last_log_term(status_response.current_term());
+    pre_vote.set_pre_vote(true);
+    kvstore::VoteResponse pre_vote_response;
+    grpc::ClientContext vote_context;
+    ASSERT_TRUE(stub.RequestVote(&vote_context, pre_vote, &pre_vote_response).ok());
+    EXPECT_FALSE(pre_vote_response.vote_granted());
+    EXPECT_EQ(pre_vote_response.voter_term(), status_response.current_term());
 }
 
 TEST(RaftIntegration, DeleteRemovesKey) {
@@ -282,6 +327,7 @@ TEST(RaftIntegration, RecoversCommittedValueAfterRestart) {
         kvstore::SetRequest request;
         request.set_key("persistent-key");
         request.set_value("persistent-value");
+        request.set_request_id("persisted-write-1");
         kvstore::SetResponse response;
         grpc::ClientContext context;
         ASSERT_TRUE(stub.Set(&context, request, &response).ok());
@@ -302,6 +348,23 @@ TEST(RaftIntegration, RecoversCommittedValueAfterRestart) {
     ASSERT_TRUE(stub.Get(&context, request, &response).ok());
     ASSERT_TRUE(response.found());
     EXPECT_EQ(response.value(), "persistent-value");
+
+    kvstore::SetRequest retry_request;
+    retry_request.set_key("persistent-key");
+    retry_request.set_value("must-not-overwrite");
+    retry_request.set_request_id("persisted-write-1");
+    kvstore::SetResponse retry_response;
+    grpc::ClientContext retry_context;
+    ASSERT_TRUE(stub.Set(&retry_context, retry_request, &retry_response).ok());
+    ASSERT_TRUE(retry_response.success());
+
+    kvstore::GetRequest verify_request;
+    verify_request.set_key("persistent-key");
+    kvstore::GetResponse after_retry;
+    grpc::ClientContext after_retry_context;
+    ASSERT_TRUE(stub.Get(&after_retry_context, verify_request, &after_retry).ok());
+    ASSERT_TRUE(after_retry.found());
+    EXPECT_EQ(after_retry.value(), "persistent-value");
 }
 
 TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
@@ -312,13 +375,7 @@ TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
     auto leader_address = "localhost:" + leader_port;
     auto follower_address = "localhost:" + follower_port;
 
-    pid_t leader_pid = StartServer(leader_port, {"localhost:18056", "localhost:18057"});
-    pid_t follower_pid = StartServer(follower_port, {"localhost:18055", "localhost:18057"});
-    pid_t third_pid = StartServer(third_port, {"localhost:18055", "localhost:18056"});
-
-    ASSERT_GT(leader_pid, 0);
-    ASSERT_GT(follower_pid, 0);
-    ASSERT_GT(third_pid, 0);
+    TestCluster cluster({leader_port, follower_port, third_port});
 
     ASSERT_TRUE(WaitForServer(leader_address));
     ASSERT_TRUE(WaitForServer(follower_address));
@@ -370,12 +427,6 @@ TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
     ASSERT_TRUE(get_resp.found());
     EXPECT_EQ(get_resp.value(), "ok");
 
-    kill(leader_pid, SIGTERM);
-    kill(follower_pid, SIGTERM);
-    kill(third_pid, SIGTERM);
-    waitpid(leader_pid, nullptr, 0);
-    waitpid(follower_pid, nullptr, 0);
-    waitpid(third_pid, nullptr, 0);
 }
 
 TEST(RaftIntegration, FollowerRepliesIncludeLeaderHint) {
@@ -668,7 +719,7 @@ TEST(RaftIntegration, EmptyAppendEntriesPreservesMatchingSuffix) {
     kvstore::AppendEntriesRequest append_request;
     append_request.set_leader_term(cluster_response.current_term());
     append_request.set_leader_id(std::stoi(port));
-    append_request.set_prev_log_index(cluster_response.commit_index() - 1);
+    append_request.set_prev_log_index(cluster_response.commit_index());
     append_request.set_prev_log_term(cluster_response.current_term());
     kvstore::AppendEntriesResponse append_response;
     grpc::ClientContext append_context;
@@ -769,9 +820,9 @@ TEST(RaftIntegration, FollowersInstallSnapshotWhenBehind) {
 
     kvstore::InstallSnapshotRequest snapshot_request;
     snapshot_request.set_leader_term(7);
-    snapshot_request.set_leader_id(50051);
-    snapshot_request.set_last_included_index(24);
-    snapshot_request.set_last_included_term(1);
+    snapshot_request.set_leader_id(std::stoi(port));
+    snapshot_request.set_last_included_index(28);
+    snapshot_request.set_last_included_term(7);
     snapshot_request.set_done(true);
 
     std::vector<std::pair<std::string, std::string>> entries = {
@@ -786,7 +837,7 @@ TEST(RaftIntegration, FollowersInstallSnapshotWhenBehind) {
     grpc::ClientContext snapshot_context;
     ASSERT_TRUE(stub->InstallSnapshot(&snapshot_context, snapshot_request, &snapshot_response).ok());
     ASSERT_TRUE(snapshot_response.success());
-    EXPECT_EQ(snapshot_response.match_index(), 24);
+    EXPECT_EQ(snapshot_response.match_index(), 28);
 
     kvstore::GetRequest get_request;
     get_request.set_key("snapshot-install-0");
