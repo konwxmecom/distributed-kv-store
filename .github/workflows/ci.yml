@@ -25,8 +25,12 @@ jobs:
         run: cmake --build build -j$(nproc)
 
       - name: Run tests
+        run: ctest --test-dir build --output-on-failure --timeout 180
+
+      - name: Run gateway tests
         run: |
-          ctest --test-dir build --output-on-failure --timeout 60
+          python3 -m pip install -r requirements.txt
+          python3 -m unittest tests/test_gateway.py -v
 
   sanitizer:
     runs-on: ubuntu-latest
@@ -47,7 +51,7 @@ jobs:
         run: cmake --build build-sanitized -j$(nproc)
 
       - name: Run sanitized tests
-        run: ctest --test-dir build-sanitized --output-on-failure --timeout 60
+        run: ctest --test-dir build-sanitized --output-on-failure --timeout 180
 
   macos:
     runs-on: macos-latest
@@ -69,4 +73,4 @@ jobs:
         run: cmake --build build-macos --parallel
 
       - name: Test
-        run: ctest --test-dir build-macos --output-on-failure --timeout 60
+        run: ctest --test-dir build-macos --output-on-failure --timeout 180

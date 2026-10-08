@@ -345,7 +345,7 @@ In VS Code, open the **Ports** panel and forward ports:
 
 Open the forwarded `4173` URL from the Ports panel. Do not replace it with the container's internal `localhost` URL when browsing from your own computer.
 
-The gateway binds to `0.0.0.0:8080` so a forwarded port can reach it. Forward both ports and keep the gateway private unless public access is intentional. The dashboard automatically maps a Codespaces `-4173.app.github.dev` URL to the matching `-8080.app.github.dev` gateway URL and sends the browser's Codespaces credentials. For other remote hostnames, allow the dashboard origin when starting the gateway and supply its URL:
+The gateway binds to `127.0.0.1:8080` by default for safer local development. To expose it on a trusted private network, set `GATEWAY_ALLOW_PUBLIC=1` or pass `--allow-public` and keep the gateway behind authentication, network restrictions, and a private address range. The dashboard automatically maps a Codespaces `-4173.app.github.dev` URL to the matching `-8080.app.github.dev` gateway URL and sends the browser's Codespaces credentials. For other remote hostnames, allow the dashboard origin when starting the gateway and supply its URL:
 
 ```text
 https://<forwarded-dashboard-host>/?api=https://<forwarded-gateway-host>
@@ -385,11 +385,13 @@ Check the gateway directly:
 curl -i http://127.0.0.1:8080/api/health
 ```
 
-If it is not reachable, start it manually:
+If it is not reachable, start it manually on the loopback interface:
 
 ```bash
-python3 gateway.py --host 0.0.0.0 --target localhost:50051 --port 8080
+python3 gateway.py --host 127.0.0.1 --target localhost:50051 --port 8080
 ```
+
+For trusted private-network exposure, add `--allow-public` and a users file or `GATEWAY_ALLOW_PUBLIC=1` plus `GATEWAY_SESSION_SECRET` with `USERS_FILE`.
 
 Check `/tmp/kv-gateway.log` for import or port errors.
 

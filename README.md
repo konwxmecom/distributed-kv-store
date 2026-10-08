@@ -35,7 +35,8 @@ Nodes communicate over gRPC using the following core RPCs (defined in `proto/kvs
 | `Get` / `Set` / `Delete` | Client-facing key-value operations |
 | `RequestVote` | Used by candidates during leader election |
 | `AppendEntries` | Used by the leader to replicate log entries and send heartbeats |
-| `Heartbeat` | Lightweight liveness signal from leader to followers |
+| `Heartbeat` | Same-term quorum liveness checks (legacy; log replication uses `AppendEntries`) |
+| `InstallSnapshot` | Transfers compacted state to a lagging node |
 
 Writes flow through a **replicated log**: an entry is first appended locally, then sent to all peers. Only once a **majority** of nodes have acknowledged the entry is it marked as *committed* and applied to the in-memory key-value store — this is what guarantees consistency across the cluster even in the presence of node failures.
 
@@ -212,14 +213,19 @@ The gateway also exposes `/health` for transport liveness, `/ready` for leader r
 `/api/backup` and `/api/restore` for authenticated user data backup, and `/api/cluster` for Raft
 term, commit index, and leader state.
 
-### Production Status
+### Consistency and Production Status
+
+Read/write semantics and their current limits are documented in
+[docs/CONSISTENCY.md](docs/CONSISTENCY.md). `STRONG` reads perform a same-term
+quorum confirmation; `EVENTUAL` follower reads may be stale without a bound.
 
 This project is an experimental/demo distributed store, not a production-ready database. It includes
 Raft replication, persistence, snapshots, optional mutual TLS, dashboard account isolation, gateway
 rate limiting, and basic metrics, but these features have not by themselves established production
 reliability. Dashboard authentication does not authenticate direct gRPC clients. Keep all service
 ports on trusted networks and do not store production data until the requirements and validation in
-[PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) are complete.
+[PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) are complete. Peer-file reload remains
+configuration-only and does not change voting membership safely.
 
 ## License
 
