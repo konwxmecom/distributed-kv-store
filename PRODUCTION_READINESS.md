@@ -4,99 +4,62 @@
 
 This repository is an experimental distributed key-value store and is **not yet ready for production data**. It has a runnable C++/gRPC Raft cluster, persistent log and metadata, snapshots, a browser gateway, optional mutual TLS, and automated tests. Those features are a starting point, not evidence of production-grade safety, availability, or support.
 
-## Starting the production-readiness work
+## Progress tracker
 
-### Phase 1: Define a supported deployment profile (current first step)
+✅ means the specific documentation or code change is present. It does **not** mean the production capability has been independently validated. ⬜ means work remains.
 
-Before any trial deployment, the project needs an explicit, conservative operating envelope. The current implementation is a static-cluster Raft system designed for local/demo deployment, not a general-purpose production service. The initial release target should therefore be narrow and well-documented.
+### Completed in this repository
 
-- Supported cluster sizes: start with a static odd-sized cluster of 3 or 5 nodes only; do not advertise support for larger or elastic membership without a validated consensus-safe membership protocol.
-- Deployment topology: single datacenter or tightly controlled private network only; no cross-region or public internet exposure.
-- Workloads: small-to-medium key/value workloads with measured latency and throughput; no unbounded bulk ingestion or large-object writes until capacity tests are complete.
-- Data model: start with small values and predictable access patterns; define maximum key size, value size, and write rates before rollout.
-- Consistency: treat the cluster as a majority-acknowledged replicated log system with Raft semantics; document the exact failure model that is guaranteed and the cases that are not covered.
-- Availability target: define a target for leader failover time, restart recovery time, and acceptable outage windows for the initial deployment profile.
-- Recovery objectives: document recovery time and data-loss expectations for process crashes, node restarts, and disk corruption scenarios; default to conservative assumptions until validated.
-- OS and storage: document the supported Linux distributions, filesystem assumptions, local disk expectations, and any limits around WAL/snapshot durability.
-- Network assumptions: name the required private-network assumptions, port access rules, and latency/jitter expectations for inter-node communication.
-- Upgrade policy: define supported rolling upgrades, restart procedures, and rollback constraints; the static peer list must remain consistent across the upgrade path.
-- Release scope: initially treat this as a controlled internal deployment product, not a general public service, unless the security, recovery, and operational controls are explicitly completed and validated.
+- ✅ Drafted an initial, conservative deployment profile: static 3- or 5-node clusters, private single-datacenter network, and controlled internal-use scope. This profile is not yet measured, approved, or a production support guarantee.
+- ✅ Documented that reloading the peer file is not a safe Raft voting-membership change; static membership remains the only supported mode.
+- ✅ Gateway now defaults to loopback binding. Public binding requires explicit opt-in and a configured users file; regression tests cover these checks.
+- ✅ Dashboard account authentication, per-user key isolation, and password-file permissions are implemented and covered by gateway tests. This does not authenticate direct gRPC clients.
+- ✅ mTLS options are implemented for server/client/gateway configuration, but mTLS is optional and is not yet enforced as a deployment default.
 
-This is the minimum scope needed before the project can claim any production-like readiness. It should be signed off before moving into broader deployment testing.
+### Phase 1: Supported deployment profile — incomplete
 
-### Phase 2: Raft safety and recovery review (next)
+The initial profile above is a draft, not a finalized contract. Complete and approve:
 
-The implementation must be checked against the Raft safety rules and failure model before any additional rollout assumptions are made.
+- ⬜ Measure and set supported workload, key/value limits, and write-rate limits.
+- ⬜ Define consistency guarantees, availability targets, and recovery objectives (RTO/RPO) from verified behavior.
+- ⬜ Specify supported OS versions, filesystems/storage assumptions, network requirements, and upgrade/rollback policy.
+- ⬜ Approve whether the supported release scope is controlled internal use or general public use.
 
-- Verify term changes, election fairness, voting rules, log matching, commit advancement, leader changes, and snapshot installation.
-- Confirm that peer reloads are treated as a config convenience only and not as a safe membership-change mechanism.
-- Test partitions, delayed or reordered messages, repeated crashes, disk-full and I/O errors, and stale or lagging nodes.
-- Validate persistence and recovery after truncated metadata or snapshots, and confirm crash recovery behavior matches the documented guarantees.
-- Require long-running multi-node soak tests and an independent review of the consensus and persistence path.
+### Phase 2: Raft safety and recovery — incomplete
 
-### Phase 3: Security hardening baseline (required before deployment)
+- ⬜ Audit term changes, elections/voting, log matching, commit advancement, leader transitions, and snapshot installation against Raft safety rules.
+- ✅ Keep voting membership static and clearly identify peer-file reload as endpoint configuration only; safe membership changes are not implemented.
+- ⬜ Test partitions, delayed/reordered messages, repeated crashes, disk-full/I/O errors, corrupt or truncated metadata/snapshots, and stale/lagging node recovery.
+- ⬜ Verify acknowledged-write durability for the explicitly supported crash and power-loss model.
+- ⬜ Add long-running multi-node soak tests and obtain independent consensus/persistence review.
 
-The system must treat security as a deployment prerequisite, not a later add-on. Dashboard authentication alone is not sufficient protection for the cluster.
+### Phase 3: Security — incomplete
 
-- Authenticate and authorize direct gRPC clients using an explicit identity model, not just browser session cookies.
-- Enforce least privilege across reads, writes, admin actions, backups, and restores; no service accounts should be over-privileged.
-- Set deployment-safe defaults for TLS, bind addresses, listening ports, gateway origins, session secrets, and network exposure.
-- Require mTLS or equivalent authenticated transport for inter-node and client traffic in any environment beyond controlled internal testing.
-- Document certificate issuance, secret provisioning, rotation, revocation, expiry handling, and emergency key replacement.
-- Define network trust boundaries and ensure public exposure never includes unauthenticated gRPC or demo gateway mode.
-- Review dependencies, configuration handling, and threat model; test abuse cases, resource exhaustion, auth failures, and connection limits.
-- Require a documented approval process for production secrets and deployment configuration before cluster startup.
+- ⬜ Authenticate and authorize direct gRPC clients; dashboard login does not protect direct gRPC access.
+- ⬜ Implement and verify least-privilege access for reads, writes, administration, backups, and restores.
+- ⬜ Require TLS/mTLS by default for supported deployments and define safe node bind/network defaults.
+- ⬜ Document and validate certificate/secret provisioning, rotation, revocation, expiry, and emergency replacement.
+- ✅ Make gateway loopback binding the default; require explicit opt-in and configured dashboard authentication for non-loopback/public binding.
+- ⬜ Complete dependency/configuration/threat-model review and test abuse, resource exhaustion, authentication failures, and connection limits.
+- ⬜ Establish approval and handling procedures for production credentials and configuration.
 
-### Completion criteria for Phases 1-3
+### Phase 4: Operations and observability — not started
 
-The project may move past the early readiness stage only when all of these conditions are met:
+- ⬜ Add structured, configurable logs and production metrics for Raft state, replication lag, WAL/snapshot activity, request latency/errors, and resource use.
+- ⬜ Define alerts, health/readiness behavior, graceful shutdown, restart policy, and capacity guidance.
+- ⬜ Document backup retention, off-host storage, restore drills, disaster recovery, and migration procedures.
+- ⬜ Provide reproducible packaging/deployment, configuration examples, and an upgrade/rollback procedure.
 
-- The deployment profile is written down and approved for a limited, controlled environment.
-- The Raft safety review has been completed with explicit failure-mode evidence and soak-test results.
-- The security baseline is documented and implemented for direct client access, TLS, least privilege, and secret handling.
-- All three sections are treated as release gates rather than optional future work.
+### Phase 5: Performance and release validation — not started
 
-## Work remaining
-
-### Requirements and supported deployment
-
-- Define supported cluster sizes, workloads, key/value limits, consistency guarantees, availability targets, and recovery objectives.
-- Document the supported operating systems, storage/filesystem assumptions, network requirements, and upgrade policy.
-- Decide whether the product is intended for a controlled internal deployment or general public use; scope the release requirements accordingly.
-
-### Raft safety and recovery
-
-- Review the implementation against the Raft safety rules, including term changes, voting, log matching, commit advancement, leader changes, and snapshot installation.
-- Add and validate safe membership changes (joint consensus or an equivalent proven protocol). Editing the peer file currently reloads outbound endpoints; it is **not** a safe voting-membership change.
-- Test partitions, delayed/reordered messages, repeated crashes, disk-full and I/O errors, corrupt/truncated metadata and snapshots, and recovery with stale or lagging nodes.
-- Verify that every acknowledged write survives the documented failure model, including process crashes and host/power loss where supported.
-- Add long-running multi-node soak tests and independent review of the consensus and persistence code.
-
-### Security
-
-- Authenticate and authorize direct gRPC clients; dashboard login only protects gateway/dashboard accounts.
-- Define and enforce least-privilege access for reads, writes, administration, backups, and restores.
-- Set deployment-safe defaults for TLS, bind addresses, gateway origins, session secrets, and network exposure.
-- Document certificate and secret provisioning, rotation, revocation, and expiry handling.
-- Perform dependency, configuration, and threat-model reviews; test abuse cases and resource limits.
-
-### Operations and observability
-
-- Add structured, configurable logs and production-grade metrics for Raft state, replication lag, disk/WAL/snapshot activity, request latency/errors, and resource use.
-- Define alerts, health/readiness behavior, graceful shutdown, restart policy, and capacity guidance.
-- Document backup retention, off-host storage, restore drills, disaster recovery, and data migration procedures.
-- Provide reproducible packaging/deployment (for example, container images or signed release artifacts), configuration examples, and an upgrade/rollback procedure.
-
-### Performance and release validation
-
-- Run representative load, latency-percentile, capacity, and resource-consumption tests across supported cluster sizes.
-- Run repeatable fault-injection and recovery tests in CI or a dedicated staging environment.
-- Define release gates: clean build, all C++ and Python tests, sanitizer results, security checks, restore drill, and staging soak test.
-- Publish known limitations, compatibility policy, operational runbooks, and a versioned release process.
+- ⬜ Run representative load, latency-percentile, capacity, and resource-consumption tests across supported cluster sizes.
+- ⬜ Run repeatable fault-injection and recovery tests in CI or a dedicated staging environment.
+- ⬜ Establish release gates for clean builds, C++/Python tests, sanitizers, security checks, restore drills, and staging soak tests.
+- ⬜ Publish known limitations, compatibility policy, operational runbooks, and a versioned release process.
 
 ## Before any trial deployment
 
-- Use only disposable or fully backed-up data until recovery behavior has been independently validated.
-- Restrict node and gateway ports to a trusted private network; do not expose unauthenticated gRPC or demo gateway mode publicly.
-- Keep cluster voting membership static; do not treat peer-file reload as live membership change.
-- Test backup restoration and node replacement using the exact deployment configuration.
+- ⬜ Use only disposable or fully backed-up data until recovery behavior has been independently validated.
+- ⬜ Restrict node and gateway ports to a trusted private network; do not expose unauthenticated gRPC or demo gateway mode publicly.
+- ✅ Keep cluster voting membership static; do not treat peer-file reload as a live membership change.
+- ⬜ Test backup restoration and node replacement using the exact deployment configuration.
