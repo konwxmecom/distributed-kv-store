@@ -24,10 +24,15 @@ done
 
 RUNTIME_DATA="${RUNTIME_DATA:-/tmp/distributed-kv-store-dashboard}"
 UI_PORT="${UI_PORT:-4173}"
+GATEWAY_HOST="${GATEWAY_HOST:-127.0.0.1}"
 GATEWAY_PORT="${GATEWAY_PORT:-8080}"
 GATEWAY_TARGET="${GATEWAY_TARGET:-localhost:${node_ports[0]}}"
 export UI_PORT
 USERS_FILE="${USERS_FILE:-}"
+if [[ "${GATEWAY_ALLOW_PUBLIC:-0}" != "0" ]]; then
+	GATEWAY_ALLOW_PUBLIC="1"
+fi
+export GATEWAY_ALLOW_PUBLIC
 if [[ -n "$USERS_FILE" ]]; then
 	session_secret="${GATEWAY_SESSION_SECRET:-}"
 	if [[ ! -f "$USERS_FILE" ]]; then
@@ -54,7 +59,10 @@ done
 
 # Start UI and gateway.
 python3 -m http.server "$UI_PORT" --directory web > /tmp/kv-ui.log 2>&1 &
-gateway_args=(--host 0.0.0.0 --target "$GATEWAY_TARGET" --port "$GATEWAY_PORT")
+gateway_args=(--host "$GATEWAY_HOST" --target "$GATEWAY_TARGET" --port "$GATEWAY_PORT")
+if [[ "${GATEWAY_ALLOW_PUBLIC:-0}" != "0" ]]; then
+	gateway_args+=(--allow-public)
+fi
 for node_port in "${node_ports[@]}"; do
 	gateway_args+=(--node "localhost:${node_port}")
 done

@@ -14,6 +14,7 @@ import secrets
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -110,6 +111,26 @@ def dashboard_origins():
     return origins
 
 
+def is_loopback_host(host):
+    normalized = str(host).strip().lower().removeprefix("[").removesuffix("]")
+    return normalized in {"127.0.0.1", "localhost", "::1"}
+
+
+def validate_gateway_security(host, users_file, allow_public=False):
+    bind_host = str(host).strip()
+    public_bind = bind_host in {"0.0.0.0", "::", "[::]"}
+    if public_bind and not allow_public and os.environ.get("GATEWAY_ALLOW_PUBLIC", "").lower() not in {"1", "true", "yes", "on"}:
+        raise ValueError(
+            "public gateway binding is disabled by default; set GATEWAY_ALLOW_PUBLIC=1 or pass --allow-public "
+            "only for trusted private deployments"
+        )
+    if public_bind and not users_file:
+        raise ValueError("public gateway bind requires --users-file or USERS_FILE to enable authentication")
+    if not is_loopback_host(bind_host) and not users_file:
+        raise ValueError("non-loopback gateway bind requires --users-file or USERS_FILE to enable authentication")
+    return True
+
+
 def read_text(path):
     return pathlib.Path(path).read_text(encoding="utf-8")
 
@@ -144,6 +165,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
     rate_limit_window_seconds = RATE_LIMIT_WINDOW_SECONDS
     rate_limit_max_requests = RATE_LIMIT_MAX_REQUESTS
     _login_bucket = {}
+    _login_bucket_lock = threading.Lock()
 
     def _audit_event(self, event, success, username="", key="", details=None):
         if not self.__class__.audit_log_path:
@@ -163,25 +185,23 @@ class GatewayHandler(BaseHTTPRequestHandler):
             handle.write(json.dumps(entry, sort_keys=True) + "\n")
 
     def _rate_limit_key(self):
-        forwarded = self.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
         return self.client_address[0]
 
     def _enforce_login_rate_limit(self):
         key = self._rate_limit_key()
         now = int(time.time())
-        bucket = self.__class__._login_bucket.setdefault(key, [])
-        bucket[:] = [ts for ts in bucket if now - ts < self.__class__.rate_limit_window_seconds]
-        if len(bucket) >= self.__class__.rate_limit_max_requests:
-            self._record_metric("auth_failure", 429)
-            retry_after = max(1, self.__class__.rate_limit_window_seconds - (now - bucket[0]))
-            self._send(429, {
-                "error": "rate limit exceeded; please wait before retrying authentication",
-                "retry_after_seconds": retry_after,
-            }, (("Retry-After", str(retry_after)),))
-            return True
-        bucket.append(now)
+        with self.__class__._login_bucket_lock:
+            bucket = self.__class__._login_bucket.setdefault(key, [])
+            bucket[:] = [ts for ts in bucket if now - ts < self.__class__.rate_limit_window_seconds]
+            if len(bucket) >= self.__class__.rate_limit_max_requests:
+                self._record_metric("auth_failure", 429)
+                retry_after = max(1, self.__class__.rate_limit_window_seconds - (now - bucket[0]))
+                self._send(429, {
+                    "error": "rate limit exceeded; please wait before retrying authentication",
+                    "retry_after_seconds": retry_after,
+                }, (("Retry-After", str(retry_after)),))
+                return True
+            bucket.append(now)
         return False
 
     def _current_user(self):
@@ -229,6 +249,14 @@ class GatewayHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Cross-Origin-Resource-Policy", "same-site")
+        if getattr(self.server, "secure_transport", False):
+            self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         self._send_cors_headers()
         for name, value in headers:
             self.send_header(name, value)
@@ -249,6 +277,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.send_response(204)
+        self.send_header("Cache-Control", "no-store")
         self._send_cors_headers()
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
@@ -268,7 +297,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/health":
             try:
-                self.stub.Heartbeat(self.pb2.HeartbeatRequest(leader_port=0, leader_term=0), timeout=2)
+                self.stub.GetClusterStatus(self.pb2.ClusterStatusRequest(), timeout=2)
                 self._record_metric("health", 200)
                 self._send(200, {
                     "status": "ok",
@@ -296,7 +325,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/health":
             try:
-                self.stub.Heartbeat(self.pb2.HeartbeatRequest(leader_port=0, leader_term=0), timeout=2)
+                self.stub.GetClusterStatus(self.pb2.ClusterStatusRequest(), timeout=2)
                 self._record_metric("health", 200)
                 self._send(200, {
                     "connected": True,
@@ -416,6 +445,9 @@ class GatewayHandler(BaseHTTPRequestHandler):
             if self._enforce_login_rate_limit():
                 return
             try:
+                if not self._origin_allowed():
+                    self._send(403, {"error": "origin is not allowed"})
+                    return
                 form = parse_qs(self._read_body().decode("utf-8"), keep_blank_values=True)
                 username = form.get("username", [""])[0]
                 password = form.get("password", [""])[0]
@@ -428,12 +460,18 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 self._send(401, {"error": "invalid username or password"})
                 return
             token = issue_session(username, self.session_secret)
-            secure = "; Secure" if self.headers.get("Origin", "").startswith("https://") else ""
+            secure = "; Secure" if (
+                getattr(self.server, "secure_transport", False) or
+                self.headers.get("Origin", "").startswith("https://")
+            ) else ""
             cookie = f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_TTL_SECONDS}{secure}"
             self._audit_event("login", True, username=username, details="success")
             self._send(200, {"user": username}, (("Set-Cookie", cookie),))
             return
         if path == "/api/logout":
+            if not self._origin_allowed():
+                self._send(403, {"error": "origin is not allowed"})
+                return
             self._audit_event("logout", True, username=self._current_user() or "", details="success")
             self._send(200, {"success": True}, (("Set-Cookie", f"{SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"),))
             return
@@ -585,7 +623,10 @@ def main():
     parser = argparse.ArgumentParser(description="HTTP gateway for the Raft KVStore")
     parser.add_argument("--target", default="localhost:50051", help="gRPC node address")
     parser.add_argument("--port", type=int, default=8080, help="HTTP gateway port")
-    parser.add_argument("--host", default="0.0.0.0", help="HTTP gateway bind address")
+    parser.add_argument("--host", default="127.0.0.1", help="HTTP gateway bind address")
+    parser.add_argument("--https-cert", help="TLS certificate for serving the HTTP gateway over HTTPS")
+    parser.add_argument("--https-key", help="TLS private key for serving the HTTP gateway over HTTPS")
+    parser.add_argument("--allow-public", action="store_true", help="allows binding to a public interface; use only for trusted private deployments")
     parser.add_argument("--allowed-origin", action="append", default=[], help="additional dashboard origin allowed to call the gateway")
     parser.add_argument("--users-file", help="private JSON file of PBKDF2 password records; enables per-user key isolation")
     parser.add_argument("--node", action="append", default=[], help="additional cluster node address for topology; may be repeated")
@@ -594,6 +635,24 @@ def main():
     parser.add_argument("--cert", help="client certificate for mTLS")
     parser.add_argument("--key", help="client private key for mTLS")
     args = parser.parse_args()
+    if bool(args.https_cert) != bool(args.https_key):
+        parser.error("--https-cert and --https-key must be provided together")
+    if args.https_cert:
+        try:
+            read_text(args.https_cert)
+            read_text(args.https_key)
+        except OSError as error:
+            parser.error(str(error))
+    try:
+        validate_gateway_security(args.host, args.users_file, allow_public=args.allow_public)
+    except ValueError as error:
+        parser.error(str(error))
+    normalized_host = args.host.strip().lower()
+    public_bind = normalized_host in {"0.0.0.0", "::", "[::]"}
+    if not is_loopback_host(normalized_host) and not args.https_cert:
+        parser.error("HTTPS is required when binding outside loopback; provide --https-cert and --https-key")
+    if public_bind and args.users_file and not args.https_cert:
+        parser.error("HTTPS is required for an authenticated public gateway")
 
     GatewayHandler.users = {}
     GatewayHandler.session_secret = b""
@@ -636,7 +695,15 @@ def main():
     server = ThreadingHTTPServer((args.host, args.port), GatewayHandler)
     server.target = args.target
     server.node_stubs = node_stubs
-    print(f"KV gateway listening on http://127.0.0.1:{args.port} -> {args.target}")
+    server.secure_transport = bool(args.https_cert)
+    if args.https_cert:
+        import ssl
+        tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        tls_context.load_cert_chain(args.https_cert, args.https_key)
+        server.socket = tls_context.wrap_socket(server.socket, server_side=True)
+    scheme = "https" if args.https_cert else "http"
+    print(f"KV gateway listening on {scheme}://{args.host}:{args.port} -> {args.target}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

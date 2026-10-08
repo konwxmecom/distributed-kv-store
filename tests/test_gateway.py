@@ -122,6 +122,19 @@ class GatewayHttpTests(unittest.TestCase):
             os.chmod(path, 0o600)
             self.assertIn("alice", gateway.load_users(path))
 
+    def test_gateway_security_rejects_public_bind_without_auth(self):
+        with self.assertRaisesRegex(ValueError, "public gateway binding is disabled"):
+            gateway.validate_gateway_security("0.0.0.0", None)
+        with patch.dict(gateway.os.environ, {"GATEWAY_ALLOW_PUBLIC": "1"}, clear=False):
+            with tempfile.TemporaryDirectory() as directory:
+                path = gateway.Path(directory) / "users.json"
+                path.write_text(json.dumps({"alice": gateway.create_password_record("password-123456")}), encoding="utf-8")
+                os.chmod(path, 0o600)
+                self.assertTrue(gateway.validate_gateway_security("0.0.0.0", str(path)))
+        with self.assertRaisesRegex(ValueError, "requires --users-file"):
+            gateway.validate_gateway_security("0.0.0.0", None, allow_public=True)
+        self.assertTrue(gateway.validate_gateway_security("127.0.0.1", None))
+
     def client(self):
         cookies = http.cookiejar.CookieJar()
         return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookies))
