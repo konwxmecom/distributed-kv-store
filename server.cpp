@@ -8,6 +8,7 @@
 #include <chrono>
 #include <atomic>
 #include <condition_variable>
+#include <csignal>
 #include <random>
 #include <algorithm>
 #include <cerrno>
@@ -51,6 +52,17 @@ using kvstore::SetRequest;
 using kvstore::SetResponse;
 using kvstore::VoteRequest;
 using kvstore::VoteResponse;
+
+namespace {
+
+volatile std::sig_atomic_t shutdown_requested = 0;
+
+void HandleShutdownSignal(int)
+{
+    shutdown_requested = 1;
+}
+
+} // namespace
 
 struct TlsConfig
 {
@@ -1985,12 +1997,13 @@ public:
     }
 };
 
-void RunServer(const std::string &port, const std::vector<std::string> &peer_addresses,
+bool RunServer(const std::string &port, const std::string &bind_host,
+               const std::vector<std::string> &peer_addresses,
                const std::vector<int> &peer_ids, const TlsConfig &tls_config,
                const std::filesystem::path &membership_path,
                const std::filesystem::path &data_root)
 {
-    std::string server_address = "0.0.0.0:" + port;
+    std::string server_address = bind_host + ":" + port;
     KVStoreServiceImpl service(std::stoi(port), peer_addresses, peer_ids,
                                data_root / ("node_" + port), tls_config,
                                membership_path);
@@ -2022,11 +2035,30 @@ void RunServer(const std::string &port, const std::vector<std::string> &peer_add
     {
         std::cerr << "Failed to start server on " << server_address
                   << " - the port may already be in use." << std::endl;
-        return;
+        return false;
     }
 
     std::cout << "Server listening on " << server_address << " [starting as FOLLOWER]" << std::endl;
+
+    shutdown_requested = 0;
+    std::signal(SIGINT, HandleShutdownSignal);
+    std::signal(SIGTERM, HandleShutdownSignal);
+    std::atomic<bool> shutdown_watcher_running{true};
+    std::thread shutdown_watcher([&]()
+    {
+        while (shutdown_watcher_running.load() && !shutdown_requested)
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (shutdown_requested)
+        {
+            std::cout << "Shutdown requested; draining active RPCs." << std::endl;
+            server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(10));
+        }
+    });
     server->Wait();
+    shutdown_watcher_running = false;
+    if (shutdown_watcher.joinable())
+        shutdown_watcher.join();
+    return true;
 }
 
 int main(int argc, char **argv)
@@ -2056,6 +2088,7 @@ int main(int argc, char **argv)
     std::vector<std::string> peer_addresses;
     std::vector<int> peer_ids;
     TlsConfig tls_config;
+    std::string bind_host = runtime_config.bind_host;
     std::filesystem::path membership_path = runtime_config.peers_file;
     std::filesystem::path data_root = runtime_config.data_root;
     tls_config.ca_file = runtime_config.ca_file;
@@ -2095,6 +2128,11 @@ int main(int argc, char **argv)
             data_root = argv[++i];
             continue;
         }
+        if (std::string(argv[i]) == "--bind" && i + 1 < argc)
+        {
+            bind_host = argv[++i];
+            continue;
+        }
         if (std::string(argv[i]) == "--ca" && i + 1 < argc)
         {
             tls_config.ca_file = argv[++i];
@@ -2118,8 +2156,19 @@ int main(int argc, char **argv)
         add_peer(argv[i]);
     }
 
+    const bool any_tls_option = !tls_config.ca_file.empty() ||
+                                !tls_config.certificate_file.empty() ||
+                                !tls_config.private_key_file.empty();
+    try
+    {
+        ValidateListenerSecurity(bind_host, tls_config.Enabled(), any_tls_option);
+    }
+    catch (const std::exception &error)
+    {
+        std::cerr << error.what() << std::endl;
+        return 2;
+    }
     if (tls_config.Enabled())
         std::cout << "TLS/mTLS enabled" << std::endl;
-    RunServer(port, peer_addresses, peer_ids, tls_config, membership_path, data_root);
-    return 0;
+    return RunServer(port, bind_host, peer_addresses, peer_ids, tls_config, membership_path, data_root) ? 0 : 1;
 }

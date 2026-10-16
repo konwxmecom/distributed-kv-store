@@ -22,6 +22,7 @@ TEST(RuntimeConfig, ParsesValuesAndPeerLists)
 
     const auto config = LoadRuntimeConfig(path);
     EXPECT_EQ(config.port, "50051");
+    EXPECT_EQ(config.bind_host, "127.0.0.1");
     ASSERT_EQ(config.peers.size(), 2U);
     EXPECT_EQ(config.peers[0], "localhost:50052");
     EXPECT_EQ(config.peers[1], "localhost:50053");
@@ -83,4 +84,34 @@ TEST(RuntimeConfig, IgnoresInlineComments)
     }
     EXPECT_EQ(LoadRuntimeConfig(path).port, "50051");
     std::filesystem::remove(path);
+}
+
+TEST(RuntimeConfig, ParsesBindHost)
+{
+    const auto path = std::filesystem::temp_directory_path() / "kvstore-runtime-bind.conf";
+    {
+        std::ofstream output(path);
+        output << "bind = 192.0.2.10\n";
+    }
+    EXPECT_EQ(LoadRuntimeConfig(path).bind_host, "192.0.2.10");
+    std::filesystem::remove(path);
+}
+
+TEST(RuntimeConfig, IdentifiesLoopbackAddresses)
+{
+    EXPECT_TRUE(IsLoopbackBindHost("localhost"));
+    EXPECT_TRUE(IsLoopbackBindHost("127.0.0.1"));
+    EXPECT_TRUE(IsLoopbackBindHost("127.42.0.1"));
+    EXPECT_TRUE(IsLoopbackBindHost("::1"));
+    EXPECT_TRUE(IsLoopbackBindHost("[::1]"));
+    EXPECT_FALSE(IsLoopbackBindHost("0.0.0.0"));
+    EXPECT_FALSE(IsLoopbackBindHost("192.0.2.10"));
+}
+
+TEST(RuntimeConfig, RequiresMutualTlsForRemoteBinds)
+{
+    EXPECT_NO_THROW(ValidateListenerSecurity("127.0.0.1", false, false));
+    EXPECT_THROW(ValidateListenerSecurity("0.0.0.0", false, false), std::runtime_error);
+    EXPECT_NO_THROW(ValidateListenerSecurity("0.0.0.0", true, true));
+    EXPECT_THROW(ValidateListenerSecurity("127.0.0.1", false, true), std::runtime_error);
 }

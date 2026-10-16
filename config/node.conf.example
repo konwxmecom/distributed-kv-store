@@ -1,5 +1,6 @@
 # Copy this file to a node-specific path before starting the server.
 port = 50051
+bind = 127.0.0.1
 peers = localhost:50052, localhost:50053
 data_root = data
 # peers_file = peers-50051.txt

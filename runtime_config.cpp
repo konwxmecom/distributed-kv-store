@@ -1,5 +1,7 @@
 #include "runtime_config.h"
 
+#include <arpa/inet.h>
+#include <array>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -36,6 +38,8 @@ void Assign(RuntimeConfig &config, const std::string &key, const std::string &va
 {
     if (key == "port")
         config.port = value;
+    else if (key == "bind")
+        config.bind_host = value;
     else if (key == "peers")
         config.peers = SplitPeers(value);
     else if (key == "data_root")
@@ -53,6 +57,43 @@ void Assign(RuntimeConfig &config, const std::string &key, const std::string &va
 }
 
 } // namespace
+
+bool IsLoopbackBindHost(const std::string &host)
+{
+    if (host == "localhost")
+        return true;
+
+    std::string address = host;
+    if (address.size() >= 2 && address.front() == '[' && address.back() == ']')
+        address = address.substr(1, address.size() - 2);
+
+    in_addr ipv4{};
+    if (inet_pton(AF_INET, address.c_str(), &ipv4) == 1)
+        return (ntohl(ipv4.s_addr) >> 24) == 127;
+
+    in6_addr ipv6{};
+    if (inet_pton(AF_INET6, address.c_str(), &ipv6) != 1)
+        return false;
+    if (IN6_IS_ADDR_LOOPBACK(&ipv6))
+        return true;
+
+    constexpr std::array<unsigned char, 12> mapped_prefix = {
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff};
+    return std::equal(mapped_prefix.begin(), mapped_prefix.end(), ipv6.s6_addr) &&
+           ipv6.s6_addr[12] == 127;
+}
+
+void ValidateListenerSecurity(const std::string &bind_host,
+                              bool tls_enabled,
+                              bool any_tls_option)
+{
+    if (bind_host.empty())
+        throw std::runtime_error("bind host must not be empty");
+    if (any_tls_option && !tls_enabled)
+        throw std::runtime_error("ca, cert, and key must be configured together");
+    if (!IsLoopbackBindHost(bind_host) && !tls_enabled)
+        throw std::runtime_error("non-loopback node bind requires mutual TLS (ca, cert, and key)");
+}
 
 RuntimeConfig LoadRuntimeConfig(const std::filesystem::path &path)
 {
