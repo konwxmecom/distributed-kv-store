@@ -232,6 +232,15 @@ int main(int argc, char **argv)
             tls_config.private_key_file = argv[++i];
     }
 
+    const bool any_tls = !tls_config.ca_file.empty() ||
+                         !tls_config.certificate_file.empty() ||
+                         !tls_config.private_key_file.empty();
+    if (any_tls && !tls_config.Enabled())
+    {
+        std::cerr << "--ca, --cert, and --key must be provided together." << std::endl;
+        return 2;
+    }
+
     std::shared_ptr<grpc::ChannelCredentials> credentials;
     if (tls_config.Enabled())
     {

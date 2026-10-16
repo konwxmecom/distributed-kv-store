@@ -185,8 +185,9 @@ The launcher starts:
 - the HTTP gateway on port `8080`, targeting the first node
 
 Override `UI_PORT`, `GATEWAY_PORT`, `GATEWAY_TARGET`, or `RUNTIME_DATA` through environment
-variables. The ports define a static membership at startup; this does not implement safe live
-Raft membership changes.
+variables. The gateway binds to `127.0.0.1` by default. A non-loopback `GATEWAY_HOST` requires
+dashboard authentication; use remote access only on a trusted network behind TLS termination.
+The ports define a static membership at startup; live Raft membership changes are not supported.
 
 ### Enable isolated dashboard users
 
