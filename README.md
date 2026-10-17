@@ -1,231 +1,113 @@
 # Raft KV Store
 
-**A distributed key-value store in C++17, built around Raft leader election and replicated log commits.** Includes a browser console, isolated dashboard accounts, JSON backup/restore, and configurable static clusters.
+**A hands-on distributed key-value store built with C++17, Raft, gRPC, and Protocol Buffers.**
 
-![Raft KV dashboard preview](docs/dashboard-preview.png)
+The project demonstrates leader election, majority-committed writes, durable recovery, and a
+browser-based operator dashboard. It is designed as an educational and hackathon demo, not as a
+production database.
 
-<p align="center"><sub>Dashboard preview of a healthy three-node cluster with live keys, node roles, and commit status.</sub></p>
+![Raft KV Store dashboard](docs/dashboard-preview.png)
 
-## Features
+<p align="center"><sub>Operator dashboard showing cluster health, Raft node roles, and key-value operations.</sub></p>
 
-- **Leader election** via Raft — term-based voting with randomized election timeouts to minimize split votes
-- **Log-based replication** — writes are appended to a replicated log and only applied once confirmed by a majority of nodes
-- **Automatic failover** — if the leader crashes, the remaining nodes detect the failure and elect a new leader without manual intervention
-- **Automatic log catch-up** — a node that falls behind (e.g., after a restart) automatically receives and replays missing log entries
-- **gRPC-based communication** — all inter-node and client-server communication uses Protocol Buffers over gRPC
-- **Chaos testing** — includes a script that randomly kills and restarts cluster nodes to verify resilience
-- **Durable recovery** — committed log entries and Raft election metadata survive process restarts
-- **Snapshots and compaction** — committed state is periodically snapshotted to bound WAL growth
-- **Optional mutual TLS** — client and peer connections can require verified certificates
-- **Reloadable peer configuration** — outbound peer endpoints can be reloaded from a watched file; this is not consensus-safe Raft membership change
-- **Operator console** — a responsive browser dashboard for inspecting keys and cluster activity
+## What it demonstrates
+
+- **Raft leader election:** nodes elect a leader using terms, votes, and randomized election timeouts.
+- **Replicated writes:** a leader commits writes after acknowledgement from a majority of the configured
+  static cluster, then applies committed entries to its key-value state.
+- **Recovery:** nodes persist Raft metadata and a write-ahead log (WAL), replay committed operations on
+  restart, and use snapshots to compact old log entries.
+- **Failure handling:** followers can catch up from a leader; the integration suite exercises replication,
+  persistence, leader failover, and forwarding.
+- **Browser console:** a Python HTTP gateway translates dashboard requests into gRPC calls to the C++
+  service.
+- **Optional security and operations features:** mutual TLS, dashboard accounts with isolated key
+  namespaces, JSON backup/restore, health endpoints, and request counters.
 
 ## Architecture
 
-Each node in the cluster runs identical code and can be in one of three Raft states:
+```mermaid
+flowchart LR
+    Browser[Browser dashboard]
+    UI[Static web UI]
+    Gateway[Python HTTP to gRPC gateway]
+    N1[Raft node 1]
+    N2[Raft node 2]
+    N3[Raft node 3]
+    S1[(WAL and snapshot)]
+    S2[(WAL and snapshot)]
+    S3[(WAL and snapshot)]
 
-- **Follower** — the default state; listens for heartbeats/log entries from a leader
-- **Candidate** — a node that hasn't heard from a leader within its election timeout, and is requesting votes to become leader
-- **Leader** — the node currently handling client writes and replicating them to followers
+    Browser --> UI
+    Browser --> Gateway
+    Gateway -->|gRPC CRUD and status| N1
+    N1 <-->|Raft RPCs| N2
+    N1 <-->|Raft RPCs| N3
+    N2 <-->|Raft RPCs| N3
+    N1 --> S1
+    N2 --> S2
+    N3 --> S3
+```
 
-Nodes communicate over gRPC using the following core RPCs (defined in `proto/kvstore.proto`):
+See [the architecture guide](docs/ARCHITECTURE.md) for the write path, RPC roles, and persistence
+details.
 
-| RPC | Purpose |
-|---|---|
-| `Get` / `Set` / `Delete` | Client-facing key-value operations |
-| `RequestVote` | Used by candidates during leader election |
-| `AppendEntries` | Used by the leader to replicate log entries and send heartbeats |
-| `Heartbeat` | Same-term quorum liveness checks (legacy; log replication uses `AppendEntries`) |
-| `InstallSnapshot` | Transfers compacted state to a lagging node |
+## Run the demo
 
-Writes flow through a **replicated log**: an entry is first appended locally, then sent to all peers. Only once a **majority** of nodes have acknowledged the entry is it marked as *committed* and applied to the in-memory key-value store — this is what guarantees consistency across the cluster even in the presence of node failures.
-
-## Tech Stack
-
-- **C++17**
-- **gRPC** + **Protocol Buffers** for RPC and serialization
-- **CMake** as the build system
-- **vcpkg** for dependency management
-
-## Getting Started
-
-See [SETUP.md](./SETUP.md) for toolchain and cluster setup, and [TEST_SETUP.md](./TEST_SETUP.md) for automated tests and the dashboard workflow.
-See [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) for the remaining work and validation needed before production use.
-
-### Linux and macOS
-
-Install CMake, a C++17 compiler, gRPC, Protocol Buffers, and GoogleTest from the
-platform package manager, then use the same portable commands:
+With CMake, a C++17 compiler, gRPC, Protocol Buffers, and GoogleTest installed:
 
 ```bash
 cmake -S . -B build
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
+./start.sh
 ```
 
-Start the default three-node demo and stop all project services with:
+Open **http://localhost:4173** for the dashboard. The launcher starts three Raft nodes, a gateway
+on port `8080`, and the static UI on port `4173`. Stop the stack with:
 
 ```bash
-./start.sh
 ./stop.sh
 ```
 
-`stop.sh` stops this repository's Raft nodes, gateway, and dashboard server while preserving runtime data. Start a different static cluster by passing its distinct node ports, for example `./start.sh 50051 50052 50053 50054 50055`. See [TEST_SETUP.md](TEST_SETUP.md) for environment setup and the dashboard workflow.
+For Windows setup, manual cluster commands, Codespaces, and troubleshooting, see
+[Build and demo guide](docs/BUILD-AND-DEMO.md). For test coverage and additional verification
+commands, see [Testing guide](docs/TESTING.md).
 
-### Quick overview
+## Technology
 
-```powershell
-# Build
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=C:\dev\vcpkg\scripts\buildsystems\vcpkg.cmake
-cmake --build build
+| Area | Technology |
+|---|---|
+| Storage service and Raft implementation | C++17 |
+| Node and client communication | gRPC |
+| RPC contracts and log serialization | Protocol Buffers |
+| Build and C++ tests | CMake, GoogleTest, CTest |
+| Dashboard API gateway | Python, gRPC Python |
+| Dashboard | HTML, CSS, JavaScript |
 
-# Run a 3-node cluster (in three separate terminals)
-.\build\Debug\server.exe 50051 50052 50053
-.\build\Debug\server.exe 50052 50051 50053
-.\build\Debug\server.exe 50053 50051 50052
+## Repository map
 
-# Run the client against any node
-.\build\Debug\client.exe
-```
+| Path | Purpose |
+|---|---|
+| `server.cpp` | Raft node, gRPC service, replication, persistence, and recovery |
+| `client.cpp` | Command-line gRPC client |
+| `proto/kvstore.proto` | RPC service and message definitions |
+| `gateway.py` | Browser-facing HTTP gateway |
+| `web/` | Operator dashboard |
+| `start.sh`, `stop.sh` | Local demo lifecycle |
+| `tests/` | C++ integration/configuration and Python gateway tests |
+| `benchmarks/` | Basic end-to-end write throughput client |
 
-For repeatable local deployments, start a node from a config file:
+## Important limitations
 
-```text
-./build/server --config config/node.conf
-```
+Cluster membership is static; reloading peer endpoints does not implement safe Raft membership
+changes. Dashboard authentication does not authenticate direct gRPC clients. `EVENTUAL` reads can
+be stale, and the project's current behavior has not been independently validated as production
+safe. Keep the demo on trusted networks and use disposable data.
 
-The config supports `port`, comma-separated `peers`, `data_root`, `peers_file`,
-and the TLS fields `ca`, `cert`, and `key`. Explicit command-line values override
-config-file values.
-
-### Chaos testing
-
-```powershell
-.\chaos_test.ps1
-```
-
-This starts a 3-node cluster and repeatedly kills/restarts a random node to verify the cluster recovers automatically.
-
-## Project Structure
-
-```
-distributed-kv-store/
-├── proto/
-│   └── kvstore.proto        # Service and message definitions
-├── server.cpp                # Raft node implementation (election + replication + KV store)
-├── client.cpp                 # Simple gRPC client
-├── start.sh                   # Start a configurable static cluster and dashboard
-├── stop.sh                    # Stop this project's running services
-├── chaos_test.ps1            # Automated resilience testing script
-├── CMakeLists.txt
-└── SETUP.md
-```
-
-## Runtime configuration
-
-Each node stores its state under `data/node_<port>/`:
-
-- `raft.meta` stores the current term and vote.
-- `raft.snapshot` stores compacted state after the committed log grows sufficiently.
-- `raft.wal` contains length-prefixed protobuf log records and is replayed on startup.
-
-For mTLS, pass the CA, certificate, and private key to both servers and clients:
-
-```powershell
-.\build\Debug\server.exe 50051 50052 50053 --ca ca.pem --cert node-50051.pem --key node-50051-key.pem
-.\build\Debug\client.exe --address localhost:50051 --ca ca.pem --cert client.pem --key client-key.pem
-```
-
-The server flushes committed log records to `raft.wal` before acknowledging writes.
-After the compaction threshold is reached, committed state is written to
-`raft.snapshot` and the obsolete WAL prefix is removed. Restart recovery loads the
-snapshot first and then replays the remaining WAL suffix.
-
-TLS configuration is intentionally strict: `ca`, `cert`, and `key` must either all
-be present or all be omitted. When present, the server requires verified client
-certificates and the gateway/client use the same CA trust root.
-
-To reload membership without restarting a node, pass `--peers-file`. Put one `host:port`
-per line in the file and edit it while the node is running:
-
-```text
-localhost:50052
-localhost:50053
-```
-
-```powershell
-.\build\Debug\server.exe 50051 --peers-file peers-50051.txt
-```
-
-The membership watcher reloads changed peer files during runtime and rebuilds the
-outbound gRPC stubs without restarting the node. This does not implement Raft joint
-consensus and must not be used to change the voting membership of a running cluster.
-Use static membership at startup. Keep one endpoint per line and do not leave the file empty.
-
-## Operator console
-
-The `web/` directory contains a lightweight dashboard for exploring the store from a browser.
-The Python gateway forwards browser CRUD requests to the real C++ gRPC node.
-
-Start the default three-node demo with `./start.sh`, or pass any set of distinct node ports:
-
-```bash
-./start.sh 50051 50052 50053 50054 50055
-```
-
-The gateway targets the first node and forwards operations through Raft. Set `UI_PORT`,
-`GATEWAY_PORT`, `GATEWAY_TARGET`, or `RUNTIME_DATA` to override the launcher defaults.
-
-For isolated dashboard accounts, create a private password file and session secret before startup:
-
-```bash
-python3 create_user.py "$HOME/.config/raft-kv/users.json" alice
-export GATEWAY_SESSION_SECRET="$(openssl rand -hex 32)"
-USERS_FILE="$HOME/.config/raft-kv/users.json" ./start.sh 50051 50052 50053
-```
-
-Run `create_user.py` again to provision another account, then restart the gateway. Dashboard keys
-are isolated per username. Without `USERS_FILE`, the local demo remains unauthenticated; do not
-expose that mode to untrusted networks. Backups export one user's JSON entries; restore merges
-entries and does not delete keys missing from the backup.
-Existing unprefixed keys are not automatically migrated when user authentication is enabled; back
-them up and migrate explicitly before switching an existing data set to accounts.
-
-```powershell
-# Terminal 1: serve the UI
-python -m http.server 4173 --directory web
-
-# Terminal 2: install and run the REST-to-gRPC gateway
-python -m pip install -r requirements.txt
-python gateway.py --target localhost:50051 --port 8080
-```
-
-Open `http://localhost:4173` after starting the gateway and the Raft node. The console includes
-live health status, key CRUD requests, node topology, replication summary, and recent activity.
-In remote environments, forward port `8080` as well as `4173`; Codespaces dashboard URLs select
-the matching forwarded gateway automatically. The gateway allows authenticated dashboard requests
-from the local UI and current Codespace; for another remote UI origin, add `--allowed-origin <origin>`.
-The browser uses the gateway's `ListKeys` RPC and scopes dashboard accounts to separate key
-prefixes. Existing unprefixed records are not automatically migrated when account mode is enabled.
-
-The gateway also exposes `/health` for transport liveness, `/ready` for leader readiness,
-`/metrics` for Prometheus-compatible request counters, `/api/nodes` for configured peer reachability,
-`/api/backup` and `/api/restore` for authenticated user data backup, and `/api/cluster` for Raft
-term, commit index, and leader state.
-
-### Consistency and Production Status
-
-Read/write semantics and their current limits are documented in
-[docs/CONSISTENCY.md](docs/CONSISTENCY.md). `STRONG` reads perform a same-term
-quorum confirmation; `EVENTUAL` follower reads may be stale without a bound.
-
-This project is an experimental/demo distributed store, not a production-ready database. It includes
-Raft replication, persistence, snapshots, optional mutual TLS, dashboard account isolation, gateway
-rate limiting, and basic metrics, but these features have not by themselves established production
-reliability. Dashboard authentication does not authenticate direct gRPC clients. Keep all service
-ports on trusted networks and do not store production data until the requirements and validation in
-[PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) are complete. Peer-file reload remains
-configuration-only and does not change voting membership safely.
+Read [the consistency model](docs/CONSISTENCY-MODEL.md) and
+[production readiness notes](docs/PRODUCTION-READINESS.md) before considering any deployment
+beyond local experimentation.
 
 ## License
 

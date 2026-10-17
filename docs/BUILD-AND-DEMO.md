@@ -1,7 +1,7 @@
-# Setup Guide
+# Build and Demo Guide
 
 This guide covers prerequisites, build steps, and a local cluster on Windows. For Linux/macOS commands,
-automated test instructions, and the dashboard workflow, see [TEST_SETUP.md](TEST_SETUP.md).
+automated test instructions, and the dashboard workflow, see [the testing guide](TESTING.md).
 
 ## Prerequisites
 

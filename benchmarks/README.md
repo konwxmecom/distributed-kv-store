@@ -14,4 +14,4 @@ Build with CMake, start a node, then run:
 For useful comparisons, record the commit, compiler/build type, node count, hardware,
 network, operation count, and run conditions. Repeat runs and report latency percentiles
 as well as throughput before using results to set capacity expectations. Production
-performance and scale testing remain open work; see [../PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md).
+performance and scale testing remain open work; see [../docs/PRODUCTION-READINESS.md](../docs/PRODUCTION-READINESS.md).

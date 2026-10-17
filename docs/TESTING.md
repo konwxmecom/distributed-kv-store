@@ -1,6 +1,6 @@
-# Test, Setup, and Run Guide
+# Testing and Demo Guide
 
-This guide explains how to build, test, run, and verify the Distributed KV Store from a clean local machine or a GitHub Codespace. See [README.md](README.md) for capabilities and limits, and [SETUP.md](SETUP.md) for Windows-specific setup.
+This guide explains how to build, test, run, and verify the Distributed KV Store from a clean local machine or a GitHub Codespace. See the [project overview](../README.md) for capabilities and limits, and the [build and demo guide](BUILD-AND-DEMO.md) for Windows-specific setup.
 
 ## 1. Project Requirements
 
@@ -126,7 +126,7 @@ python3 -m unittest tests/test_gateway.py -v
 
 CI runs the C++ build/tests and sanitizer configurations. Run the Python gateway tests locally as
 shown above; they are a separate suite. A passing test run is not a production-readiness guarantee;
-see [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for required operational and failure testing.
+see [the production readiness notes](PRODUCTION-READINESS.md) for required operational and failure testing.
 
 ## 6. Run a Manual Three-Node Cluster
 

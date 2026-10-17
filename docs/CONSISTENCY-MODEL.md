@@ -1,7 +1,7 @@
 # Consistency and durability
 
 This document describes the behavior implemented by the current demo server. It
-is not a production guarantee; see [../PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md)
+is not a production guarantee; see [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md)
 for failure modes that still need independent validation.
 
 ## Writes
