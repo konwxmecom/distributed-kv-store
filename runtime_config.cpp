@@ -75,7 +75,7 @@ RuntimeConfig LoadRuntimeConfig(const std::filesystem::path &path)
             throw std::runtime_error("invalid runtime config at line " + std::to_string(line_number));
         const auto key = Trim(trimmed.substr(0, separator));
         const auto value = Trim(trimmed.substr(separator + 1));
-        if (key.empty() || value.empty())
+        if (key.empty() || (value.empty() && key != "peers"))
             throw std::runtime_error("invalid runtime config at line " + std::to_string(line_number));
         Assign(config, key, value);
     }

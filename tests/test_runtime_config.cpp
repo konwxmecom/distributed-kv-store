@@ -62,6 +62,21 @@ TEST(RuntimeConfig, RejectsMalformedLines)
     std::filesystem::remove(path);
 }
 
+TEST(RuntimeConfig, AcceptsEmptyPeerLists)
+{
+    const auto path = std::filesystem::temp_directory_path() / "kvstore-runtime-empty-peers.conf";
+    {
+        std::ofstream output(path);
+        output << "port = 50051\n"
+               << "peers =\n";
+    }
+
+    const auto config = LoadRuntimeConfig(path);
+    EXPECT_EQ(config.port, "50051");
+    EXPECT_TRUE(config.peers.empty());
+    std::filesystem::remove(path);
+}
+
 TEST(RuntimeConfig, RejectsPartialTlsConfiguration)
 {
     const auto path = std::filesystem::temp_directory_path() / "kvstore-runtime-tls.conf";
