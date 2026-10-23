@@ -131,6 +131,11 @@ Each node stores its state under `data/node_<port>/`:
 - `raft.snapshot` stores compacted state after the committed log grows sufficiently.
 - `raft.wal` contains length-prefixed protobuf log records and is replayed on startup.
 
+The server rejects writes with keys larger than 4,096 bytes, values larger than
+1 MiB, or request/client IDs larger than 256 bytes. These are per-request input
+limits, not measured workload or throughput guarantees; supported capacity and
+write-rate limits remain unestablished.
+
 For mTLS, pass the CA, certificate, and private key to both servers and clients:
 
 ```powershell

@@ -219,6 +219,50 @@ TEST(RaftIntegration, LeaderSetAndGetRoundTrip) {
 
 }
 
+TEST(RaftIntegration, EnforcesDocumentedWriteSizeLimits) {
+    const std::string port = "18062";
+    const std::string address = "localhost:" + port;
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+
+    kvstore::SetRequest request;
+    request.set_key(std::string(4096, 'k'));
+    request.set_value(std::string(1024 * 1024, 'v'));
+    request.set_request_id(std::string(256, 'r'));
+    kvstore::SetResponse response;
+    grpc::ClientContext context;
+    ASSERT_TRUE(stub.Set(&context, request, &response).ok());
+    ASSERT_TRUE(response.success());
+
+    request.set_key(std::string(4097, 'k'));
+    kvstore::SetResponse oversized_key_response;
+    grpc::ClientContext oversized_key_context;
+    const auto oversized_key_status =
+        stub.Set(&oversized_key_context, request, &oversized_key_response);
+    EXPECT_EQ(oversized_key_status.error_code(), grpc::StatusCode::INVALID_ARGUMENT);
+
+    request.set_key(std::string(4096, 'k'));
+    request.set_value(std::string(1024 * 1024 + 1, 'v'));
+    kvstore::SetResponse oversized_value_response;
+    grpc::ClientContext oversized_value_context;
+    const auto oversized_value_status =
+        stub.Set(&oversized_value_context, request, &oversized_value_response);
+    EXPECT_EQ(oversized_value_status.error_code(), grpc::StatusCode::INVALID_ARGUMENT);
+
+    request.set_value("value");
+    request.set_request_id(std::string(257, 'r'));
+    kvstore::SetResponse oversized_request_id_response;
+    grpc::ClientContext oversized_request_id_context;
+    const auto oversized_request_id_status =
+        stub.Set(&oversized_request_id_context, request, &oversized_request_id_response);
+    EXPECT_EQ(oversized_request_id_status.error_code(), grpc::StatusCode::INVALID_ARGUMENT);
+}
+
 TEST(RaftIntegration, LeaderCommitsNoOpBeforeReportingReadiness) {
     const std::string port = "18070";
     const std::string address = "localhost:" + port;

@@ -20,7 +20,8 @@ This repository is an experimental distributed key-value store and is **not yet 
 
 The initial profile above is a draft, not a finalized contract. Complete and approve:
 
-- ⬜ Measure and set supported workload, key/value limits, and write-rate limits.
+- ✅ Document and boundary-test hard per-write limits: 4,096-byte keys, 1 MiB values, and 256-byte request/client IDs. These are input guards, not workload capacity guarantees.
+- ⬜ Measure supported workload and write-rate limits across representative deployments.
 - ⬜ Define consistency guarantees, availability targets, and recovery objectives (RTO/RPO) from verified behavior.
 - ⬜ Specify supported OS versions, filesystems/storage assumptions, network requirements, and upgrade/rollback policy.
 - ⬜ Approve whether the supported release scope is controlled internal use or general public use.
