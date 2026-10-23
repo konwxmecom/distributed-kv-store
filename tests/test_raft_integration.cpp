@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <grpcpp/grpcpp.h>
+#include <grpcpp/generic/generic_stub.h>
 
 #include "../kvstore.grpc.pb.h"
 
@@ -53,6 +54,37 @@ bool WaitForServer(const std::string& address, int timeout_seconds = 20) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
     return false;
+}
+
+bool IsGrpcHealthServing(const std::string& address) {
+    // Encode HealthCheckRequest.service as protobuf field 1 to avoid another generated dependency.
+    const std::string request_bytes("\x0a\x0f" "kvstore.KVStore", 17);
+    grpc::Slice request_slice(request_bytes);
+    grpc::ByteBuffer request(&request_slice, 1);
+    grpc::ByteBuffer response;
+    grpc::ClientContext context;
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(1));
+    grpc::CompletionQueue completion_queue;
+    grpc::GenericStub stub(grpc::CreateChannel(address, grpc::InsecureChannelCredentials()));
+    auto reader = stub.PrepareUnaryCall(
+        &context, "/grpc.health.v1.Health/Check", request, &completion_queue);
+    if (!reader)
+        return false;
+    reader->StartCall();
+    grpc::Status status;
+    reader->Finish(&response, &status, reinterpret_cast<void*>(1));
+    void* tag = nullptr;
+    bool completed = false;
+    const bool received = completion_queue.Next(&tag, &completed);
+    completion_queue.Shutdown();
+    if (!received || !completed || tag != reinterpret_cast<void*>(1) || !status.ok())
+        return false;
+
+    grpc::Slice response_slice;
+    if (!response.DumpToSingleSlice(&response_slice).ok() || response_slice.size() != 2)
+        return false;
+    const auto* bytes = response_slice.begin();
+    return bytes[0] == 0x08 && bytes[1] == 0x01;
 }
 
 bool WaitForLeader(const std::string& address, int timeout_seconds = 10) {
@@ -161,6 +193,7 @@ TEST(RaftIntegration, LeaderSetAndGetRoundTrip) {
     TestServer server(port);
     ASSERT_GT(server.pid, 0);
     ASSERT_TRUE(WaitForServer(address));
+    EXPECT_TRUE(IsGrpcHealthServing(address));
     ASSERT_TRUE(WaitForLeader(address));
 
     auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());

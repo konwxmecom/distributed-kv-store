@@ -2008,6 +2008,7 @@ bool RunServer(const std::string &port, const std::string &bind_host,
                                data_root / ("node_" + port), tls_config,
                                membership_path);
 
+    grpc::EnableDefaultHealthCheckService(true);
     ServerBuilder builder;
     if (tls_config.Enabled())
     {
@@ -2038,6 +2039,9 @@ bool RunServer(const std::string &port, const std::string &bind_host,
         return false;
     }
 
+    if (auto *health_service = server->GetHealthCheckService())
+        health_service->SetServingStatus("kvstore.KVStore", true);
+
     std::cout << "Server listening on " << server_address << " [starting as FOLLOWER]" << std::endl;
 
     shutdown_requested = 0;
@@ -2051,6 +2055,11 @@ bool RunServer(const std::string &port, const std::string &bind_host,
         if (shutdown_requested)
         {
             std::cout << "Shutdown requested; draining active RPCs." << std::endl;
+            if (auto *health_service = server->GetHealthCheckService())
+            {
+                health_service->SetServingStatus("kvstore.KVStore", false);
+                health_service->Shutdown();
+            }
             server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(10));
         }
     });

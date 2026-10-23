@@ -17,6 +17,7 @@
 - **Durable recovery** — committed log entries and Raft election metadata survive process restarts
 - **Snapshots and compaction** — committed state is periodically snapshotted to bound WAL growth
 - **Optional mutual TLS** — client and peer connections can require verified certificates
+- **gRPC health checking** — standard `grpc.health.v1.Health/Check` reports whether the node is serving and switches to not-serving before graceful shutdown
 - **Reloadable peer configuration** — outbound peer endpoints can be reloaded from a watched file; this is not consensus-safe Raft membership change
 - **Operator console** — a responsive browser dashboard for inspecting keys and cluster activity
 
@@ -140,6 +141,12 @@ The server flushes committed log records to `raft.wal` before acknowledging writ
 After the compaction threshold is reached, committed state is written to
 `raft.snapshot` and the obsolete WAL prefix is removed. Restart recovery loads the
 snapshot first and then replays the remaining WAL suffix.
+
+The standard gRPC health endpoint reports `kvstore.KVStore` as `SERVING` while the
+process accepts RPCs, and `NOT_SERVING` once shutdown begins. This is a process
+health signal only: it does not guarantee that a leader is elected, a quorum is
+available, or a particular request can succeed. Use `GetClusterStatus` and
+application-level checks for cluster state.
 
 TLS configuration is intentionally strict: `ca`, `cert`, and `key` must either all
 be present or all be omitted. When present, the server requires verified client

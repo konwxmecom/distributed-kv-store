@@ -43,10 +43,11 @@ The initial profile above is a draft, not a finalized contract. Complete and app
 - ⬜ Complete dependency/configuration/threat-model review and test abuse, resource exhaustion, authentication failures, and connection limits.
 - ⬜ Establish approval and handling procedures for production credentials and configuration.
 
-### Phase 4: Operations and observability — not started
+### Phase 4: Operations and observability — incomplete
 
 - ⬜ Add structured, configurable logs and production metrics for Raft state, replication lag, WAL/snapshot activity, request latency/errors, and resource use.
-- ⬜ Define alerts, health/readiness behavior, graceful shutdown, restart policy, and capacity guidance.
+- ✅ Expose standard gRPC process health and mark the node not-serving before its existing bounded graceful shutdown. This does not indicate Raft quorum or application-level readiness.
+- ⬜ Define alerts, Raft-aware readiness behavior, restart policy, and capacity guidance.
 - ⬜ Document backup retention, off-host storage, restore drills, disaster recovery, and migration procedures.
 - ⬜ Provide reproducible packaging/deployment, configuration examples, and an upgrade/rollback procedure.
 
