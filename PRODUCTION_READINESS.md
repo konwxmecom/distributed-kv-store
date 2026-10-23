@@ -48,7 +48,7 @@ The initial profile above is a draft, not a finalized contract. Complete and app
 - ⬜ Add structured, configurable logs and production metrics for Raft state, replication lag, WAL/snapshot activity, request latency/errors, and resource use.
 - ✅ Expose standard gRPC process health and mark the node not-serving before its existing bounded graceful shutdown. This does not indicate Raft quorum or application-level readiness.
 - ⬜ Define alerts, Raft-aware readiness behavior, restart policy, and capacity guidance.
-- ⬜ Document backup retention, off-host storage, restore drills, disaster recovery, and migration procedures.
+- ✅ Document cautious backup, off-host storage, restore-drill, disaster-recovery, and upgrade/rollback procedures in [docs/OPERATIONS.md](docs/OPERATIONS.md). Procedures still require disposable-environment drills and approved retention/RTO/RPO policies.
 - ⬜ Provide reproducible packaging/deployment, configuration examples, and an upgrade/rollback procedure.
 
 ### Phase 5: Performance and release validation — not started
@@ -56,7 +56,7 @@ The initial profile above is a draft, not a finalized contract. Complete and app
 - ⬜ Run representative load, latency-percentile, capacity, and resource-consumption tests across supported cluster sizes.
 - ⬜ Run repeatable fault-injection and recovery tests in CI or a dedicated staging environment.
 - ⬜ Establish release gates for clean builds, C++/Python tests, sanitizers, security checks, restore drills, and staging soak tests.
-- ⬜ Publish known limitations, compatibility policy, operational runbooks, and a versioned release process.
+- ⬜ Publish known limitations, compatibility policy, and a versioned release process. The initial operations runbook is [docs/OPERATIONS.md](docs/OPERATIONS.md); publication alone is not operational validation.
 
 ## Before any trial deployment
 

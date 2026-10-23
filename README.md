@@ -52,6 +52,7 @@ Writes flow through a **replicated log**: an entry is first appended locally, th
 
 See [SETUP.md](./SETUP.md) for toolchain and cluster setup, and [TEST_SETUP.md](./TEST_SETUP.md) for automated tests and the dashboard workflow.
 See [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) for the remaining work and validation needed before production use.
+See [docs/OPERATIONS.md](./docs/OPERATIONS.md) for cautious backup, restore, disaster-recovery, and upgrade guidance.
 
 ### Linux and macOS
 
