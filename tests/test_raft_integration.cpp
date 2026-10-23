@@ -533,6 +533,40 @@ TEST(RaftIntegration, RecoversAcknowledgedWriteAfterAbruptProcessKill) {
     EXPECT_EQ(get_response.value(), "acknowledged-value");
 }
 
+TEST(RaftIntegration, FailsCleanlyOnTruncatedSnapshot) {
+    const std::string port = "18063";
+    const auto data_path = std::filesystem::path("data") / ("node_" + port);
+    std::error_code error;
+    std::filesystem::remove_all(data_path, error);
+    ASSERT_FALSE(error);
+    std::filesystem::create_directories(data_path);
+    {
+        std::ofstream snapshot(data_path / "raft.snapshot", std::ios::binary);
+        ASSERT_TRUE(snapshot.is_open());
+        snapshot.write("RKVSNP01", 8);
+        ASSERT_TRUE(snapshot.good());
+    }
+
+    const pid_t pid = StartServer(port, {});
+    ASSERT_GT(pid, 0);
+    int process_status = 0;
+    pid_t exited_pid = 0;
+    for (int attempt = 0; attempt < 100; ++attempt) {
+        exited_pid = waitpid(pid, &process_status, WNOHANG);
+        if (exited_pid == pid)
+            break;
+        ASSERT_EQ(exited_pid, 0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    if (exited_pid == 0) {
+        kill(pid, SIGTERM);
+        waitpid(pid, &process_status, 0);
+        FAIL() << "server did not reject the truncated snapshot";
+    }
+    ASSERT_TRUE(WIFEXITED(process_status));
+    EXPECT_EQ(WEXITSTATUS(process_status), 2);
+}
+
 TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
     const std::string leader_port = "18055";
     const std::string follower_port = "18056";

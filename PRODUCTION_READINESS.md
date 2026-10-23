@@ -32,6 +32,7 @@ The initial profile above is a draft, not a finalized contract. Complete and app
 - ✅ Keep voting membership static and clearly identify peer-file reload as endpoint configuration only; safe membership changes are not implemented.
 - ✅ Test recovery of valid committed data after a truncated trailing WAL header.
 - ✅ Test that a successfully acknowledged write survives an abrupt single-node process kill and restart.
+- ✅ Test that a truncated snapshot is rejected with an explicit startup error and nonzero exit.
 - ⬜ Test partitions, delayed/reordered messages, repeated crashes, disk-full/I/O errors, corrupt or truncated metadata/snapshots, and stale/lagging node recovery.
 - ⬜ Verify acknowledged-write durability for the explicitly supported crash and power-loss model beyond the tested single-process-kill case.
 - ⬜ Add long-running multi-node soak tests and obtain independent consensus/persistence review.

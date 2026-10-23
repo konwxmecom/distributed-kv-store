@@ -2179,5 +2179,13 @@ int main(int argc, char **argv)
     }
     if (tls_config.Enabled())
         std::cout << "TLS/mTLS enabled" << std::endl;
-    return RunServer(port, bind_host, peer_addresses, peer_ids, tls_config, membership_path, data_root) ? 0 : 1;
+    try
+    {
+        return RunServer(port, bind_host, peer_addresses, peer_ids, tls_config, membership_path, data_root) ? 0 : 1;
+    }
+    catch (const std::exception &error)
+    {
+        std::cerr << "Failed to initialize server: " << error.what() << std::endl;
+        return 2;
+    }
 }
