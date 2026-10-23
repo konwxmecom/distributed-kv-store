@@ -30,8 +30,9 @@ The initial profile above is a draft, not a finalized contract. Complete and app
 - ⬜ Audit term changes, elections/voting, log matching, commit advancement, leader transitions, and snapshot installation against Raft safety rules.
 - ✅ Keep voting membership static and clearly identify peer-file reload as endpoint configuration only; safe membership changes are not implemented.
 - ✅ Test recovery of valid committed data after a truncated trailing WAL header.
+- ✅ Test that a successfully acknowledged write survives an abrupt single-node process kill and restart.
 - ⬜ Test partitions, delayed/reordered messages, repeated crashes, disk-full/I/O errors, corrupt or truncated metadata/snapshots, and stale/lagging node recovery.
-- ⬜ Verify acknowledged-write durability for the explicitly supported crash and power-loss model.
+- ⬜ Verify acknowledged-write durability for the explicitly supported crash and power-loss model beyond the tested single-process-kill case.
 - ⬜ Add long-running multi-node soak tests and obtain independent consensus/persistence review.
 
 ### Phase 3: Security — incomplete

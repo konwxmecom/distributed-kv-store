@@ -447,6 +447,48 @@ TEST(RaftIntegration, RecoversValidPrefixAfterTruncatedWalTail) {
     EXPECT_EQ(response.value(), "committed-value");
 }
 
+TEST(RaftIntegration, RecoversAcknowledgedWriteAfterAbruptProcessKill) {
+    const std::string port = "18061";
+    const std::string address = "localhost:" + port;
+    TestServer server(port);
+    ASSERT_GT(server.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+    kvstore::SetRequest request;
+    request.set_key("before-abrupt-kill");
+    request.set_value("acknowledged-value");
+    kvstore::SetResponse response;
+    grpc::ClientContext context;
+    ASSERT_TRUE(stub.Set(&context, request, &response).ok());
+    ASSERT_TRUE(response.success());
+
+    const pid_t server_pid = server.pid;
+    ASSERT_EQ(kill(server_pid, SIGKILL), 0);
+    int process_status = 0;
+    ASSERT_EQ(waitpid(server_pid, &process_status, 0), server_pid);
+    server.pid = -1;
+    ASSERT_TRUE(WIFSIGNALED(process_status));
+    EXPECT_EQ(WTERMSIG(process_status), SIGKILL);
+
+    TestServer restarted(port, false);
+    ASSERT_GT(restarted.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto restarted_channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub restarted_stub(restarted_channel);
+    kvstore::GetRequest get_request;
+    get_request.set_key("before-abrupt-kill");
+    kvstore::GetResponse get_response;
+    grpc::ClientContext get_context;
+    ASSERT_TRUE(restarted_stub.Get(&get_context, get_request, &get_response).ok());
+    ASSERT_TRUE(get_response.found());
+    EXPECT_EQ(get_response.value(), "acknowledged-value");
+}
+
 TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
     const std::string leader_port = "18055";
     const std::string follower_port = "18056";
