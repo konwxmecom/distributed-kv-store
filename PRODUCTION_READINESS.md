@@ -49,7 +49,8 @@ The initial profile above is a draft, not a finalized contract. Complete and app
 
 - ⬜ Add structured, configurable logs and production metrics for Raft state, replication lag, WAL/snapshot activity, request latency/errors, and resource use.
 - ✅ Expose standard gRPC process health and mark the node not-serving before its existing bounded graceful shutdown. This does not indicate Raft quorum or application-level readiness.
-- ⬜ Define alerts, Raft-aware readiness behavior, restart policy, and capacity guidance.
+- ✅ Define and test the gateway `/ready` contract: only a ready leader returns success; followers and RPC errors return not-ready.
+- ⬜ Define alerts, restart policy, and capacity guidance from staging evidence.
 - ✅ Document cautious backup, off-host storage, restore-drill, disaster-recovery, and upgrade/rollback procedures in [docs/OPERATIONS.md](docs/OPERATIONS.md). Procedures still require disposable-environment drills and approved retention/RTO/RPO policies.
 - ⬜ Provide reproducible packaging/deployment, configuration examples, and an upgrade/rollback procedure.
 

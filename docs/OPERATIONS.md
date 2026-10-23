@@ -6,6 +6,20 @@ No restore drill or disaster-recovery objective is implied by the presence of
 these instructions; validate them against a disposable cluster before relying
 on them.
 
+## Health and readiness probes
+
+The gateway's `/health` endpoint checks whether its configured gRPC target
+responds; it is a transport-liveness check, not evidence that the cluster can
+commit writes. The `/ready` endpoint returns success only when that target
+reports itself as a ready leader, and returns `503` for followers or RPC errors.
+These distinct behaviors are covered by gateway tests.
+
+Use `/ready` only when routing traffic specifically to the active leader.
+Follower nodes may still forward client operations, but the endpoint deliberately
+does not count them as leader-ready. Neither probe defines alert thresholds,
+restart policy, quorum recovery, or an availability objective; operators must
+establish those from staging observations.
+
 ## Backup choices
 
 ### Dashboard account export

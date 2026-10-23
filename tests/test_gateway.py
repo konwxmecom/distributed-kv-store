@@ -215,6 +215,25 @@ class GatewayHttpTests(unittest.TestCase):
         self.assertTrue(next(node for node in nodes if node["node_id"] == 5001)["is_leader"])
         self.assertTrue(all(node["reachable"] for node in nodes))
 
+    def test_readiness_requires_target_node_to_be_ready_leader(self):
+        with patch.object(gateway.GatewayHandler, "stub", FakeStub(node_id=5001, leader=True)):
+            status, _, body = self.request(self.client(), "/ready")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body), {
+            "status": "ready",
+            "leader_id": 5001,
+            "current_term": 4,
+        })
+
+        with patch.object(gateway.GatewayHandler, "stub", FakeStub(node_id=5002, leader=False)):
+            status, _, body = self.request(self.client(), "/ready")
+        self.assertEqual(status, 503)
+        self.assertEqual(json.loads(body), {
+            "status": "not_ready",
+            "leader_id": -1,
+            "current_term": 4,
+        })
+
     def test_mutation_rejects_untrusted_origin(self):
         client = self.client()
         self.login(client, "alice", "alice-password-123")
