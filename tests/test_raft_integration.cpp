@@ -400,6 +400,53 @@ TEST(RaftIntegration, RecoversCommittedValueAfterRestart) {
     EXPECT_EQ(after_retry.value(), "persistent-value");
 }
 
+TEST(RaftIntegration, RecoversValidPrefixAfterTruncatedWalTail) {
+    const std::string port = "18060";
+    const std::string address = "localhost:" + port;
+    const auto wal_path = std::filesystem::path("data") / ("node_" + port) / "raft.wal";
+
+    {
+        TestServer server(port);
+        ASSERT_GT(server.pid, 0);
+        ASSERT_TRUE(WaitForServer(address));
+        ASSERT_TRUE(WaitForLeader(address));
+
+        auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+        kvstore::KVStore::Stub stub(channel);
+        kvstore::SetRequest request;
+        request.set_key("before-truncated-tail");
+        request.set_value("committed-value");
+        kvstore::SetResponse response;
+        grpc::ClientContext context;
+        ASSERT_TRUE(stub.Set(&context, request, &response).ok());
+        ASSERT_TRUE(response.success());
+    }
+
+    ASSERT_TRUE(std::filesystem::exists(wal_path));
+    {
+        std::ofstream wal(wal_path, std::ios::binary | std::ios::app);
+        ASSERT_TRUE(wal.is_open());
+        const char truncated_record[] = {0x10, 0x00};
+        wal.write(truncated_record, sizeof(truncated_record));
+        ASSERT_TRUE(wal.good());
+    }
+
+    TestServer restarted(port, false);
+    ASSERT_GT(restarted.pid, 0);
+    ASSERT_TRUE(WaitForServer(address));
+    ASSERT_TRUE(WaitForLeader(address));
+
+    auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    kvstore::KVStore::Stub stub(channel);
+    kvstore::GetRequest request;
+    request.set_key("before-truncated-tail");
+    kvstore::GetResponse response;
+    grpc::ClientContext context;
+    ASSERT_TRUE(stub.Get(&context, request, &response).ok());
+    ASSERT_TRUE(response.found());
+    EXPECT_EQ(response.value(), "committed-value");
+}
+
 TEST(RaftIntegration, FollowerForwardsWritesToLeader) {
     const std::string leader_port = "18055";
     const std::string follower_port = "18056";
